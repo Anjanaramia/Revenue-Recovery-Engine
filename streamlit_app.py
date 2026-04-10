@@ -123,12 +123,33 @@ def _init_state():
         "selected_client_name": None,
         "openai_key": os.getenv("OPENAI_API_KEY", ""),
         "upload_filename": None,
+        # Outreach: persist result across tab switches
+        "outreach_result": None,
+        "outreach_lead_name": None,
     }
     for k, v in defaults.items():
         if k not in st.session_state:
             st.session_state[k] = v
 
 _init_state()
+
+# ── Clipboard Helper ─────────────────────────────────────────────────────────────
+def _copy_button(text: str, button_label: str = "📋 Copy to Clipboard", key: str = "copy"):
+    """Render a copy-to-clipboard button using a JS snippet."""
+    import streamlit.components.v1 as components
+    escaped = text.replace("`", r"\`").replace("$", r"\$")
+    components.html(
+        f"""
+        <button onclick="navigator.clipboard.writeText(`{escaped}`).then(()=>{{this.textContent='✅ Copied!';setTimeout(()=>this.textContent='{button_label}',2000)}})"
+                style="background:#1E3A5F;color:white;border:none;padding:7px 16px;border-radius:7px;
+                       font-size:0.82rem;cursor:pointer;font-family:Inter,sans-serif;font-weight:500;
+                       margin-top:6px;transition:background 0.2s;"
+                onmouseover="this.style.background='#2C5F8A'" onmouseout="this.style.background='#1E3A5F'">
+          {button_label}
+        </button>
+        """,
+        height=45,
+    )
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────────
 
@@ -220,18 +241,22 @@ with tab1:
     uploaded = st.file_uploader("Choose a CSV file", type=["csv"], key="csv_uploader")
 
     if uploaded:
-        try:
-            raw = pd.read_csv(uploaded)
-            st.session_state["raw_df"] = raw
-            st.session_state["upload_filename"] = uploaded.name
-            cleaned, report = clean_crm_data(raw)
-            st.session_state["cleaned_df"] = cleaned
-            st.session_state["quality_report"] = report
-            # Reset downstream state
-            st.session_state["scored_df"] = None
-            st.session_state["revenue"] = None
-        except Exception as e:
-            st.error(f"Failed to read CSV: {e}")
+        # Only re-process (and reset scoring) if a NEW file was uploaded
+        if uploaded.name != st.session_state.get("upload_filename"):
+            try:
+                raw = pd.read_csv(uploaded)
+                st.session_state["raw_df"] = raw
+                st.session_state["upload_filename"] = uploaded.name
+                cleaned, report = clean_crm_data(raw)
+                st.session_state["cleaned_df"] = cleaned
+                st.session_state["quality_report"] = report
+                # Reset downstream state only on new upload
+                st.session_state["scored_df"] = None
+                st.session_state["revenue"] = None
+                st.session_state["outreach_result"] = None
+                st.session_state["outreach_lead_name"] = None
+            except Exception as e:
+                st.error(f"Failed to read CSV: {e}")
 
     if st.session_state.get("cleaned_df") is not None:
         cleaned = st.session_state["cleaned_df"]
@@ -478,6 +503,10 @@ with tab3:
 
             gen_btn = st.button("✨ Generate Outreach", type="primary")
 
+            # Clear cached result when a different lead is selected
+            if st.session_state.get("outreach_lead_name") != sel_row.get("Lead_Name"):
+                st.session_state["outreach_result"] = None
+
             if gen_btn:
                 with st.spinner("Generating personalized outreach…"):
                     result = generate_outreach_for_row(
@@ -485,8 +514,14 @@ with tab3:
                         api_key=st.session_state["openai_key"] or None,
                         model=model_choice,
                     )
+                # Persist across tab switches
+                st.session_state["outreach_result"] = result
+                st.session_state["outreach_lead_name"] = sel_row.get("Lead_Name")
 
-                badge = "🤖 AI-generated (OpenAI)" if result["generated_by"] == "openai" else "📝 Template-generated (no API key)"
+            # Render persisted result (survives tab switches)
+            result = st.session_state.get("outreach_result")
+            if result:
+                badge = "🤖 AI-generated (OpenAI)" if result["generated_by"] == "openai" else "📝 Template-generated (built-in)"
                 st.markdown(f'<div class="alert-info">{badge}</div>', unsafe_allow_html=True)
                 st.markdown("")
 
@@ -494,24 +529,44 @@ with tab3:
                 with col_e:
                     st.markdown('<p class="section-title">Reactivation Email</p>', unsafe_allow_html=True)
                     st.markdown(f'<div class="outreach-card">{result["email"]}</div>', unsafe_allow_html=True)
-                    st.download_button("⬇️ Copy Email", result["email"], f"email_{sel_row.get('Lead_Name','lead')}.txt", "text/plain")
+                    btn_col, dl_col = st.columns([1, 1])
+                    with btn_col:
+                        _copy_button(result["email"], "📋 Copy Email", key="copy_email")
+                    with dl_col:
+                        st.download_button("⬇️ Download .txt", result["email"],
+                                           f"email_{sel_row.get('Lead_Name','lead')}.txt", "text/plain",
+                                           key="dl_email")
 
                 with col_v:
                     st.markdown('<p class="section-title">Voicemail / Call Script</p>', unsafe_allow_html=True)
                     st.markdown(f'<div class="outreach-card">{result["voicemail"]}</div>', unsafe_allow_html=True)
-                    st.download_button("⬇️ Copy Script", result["voicemail"], f"voicemail_{sel_row.get('Lead_Name','lead')}.txt", "text/plain")
+                    btn_col2, dl_col2 = st.columns([1, 1])
+                    with btn_col2:
+                        _copy_button(result["voicemail"], "📋 Copy Script", key="copy_voicemail")
+                    with dl_col2:
+                        st.download_button("⬇️ Download .txt", result["voicemail"],
+                                           f"voicemail_{sel_row.get('Lead_Name','lead')}.txt", "text/plain",
+                                           key="dl_voicemail")
 
                 with col_s:
                     st.markdown('<p class="section-title">SMS Template</p>', unsafe_allow_html=True)
                     st.markdown(f'<div class="outreach-card">{result["sms"]}</div>', unsafe_allow_html=True)
-                    st.download_button("⬇️ Copy SMS", result["sms"], f"sms_{sel_row.get('Lead_Name','lead')}.txt", "text/plain")
+                    btn_col3, dl_col3 = st.columns([1, 1])
+                    with btn_col3:
+                        _copy_button(result["sms"], "📋 Copy SMS", key="copy_sms")
+                    with dl_col3:
+                        st.download_button("⬇️ Download .txt", result["sms"],
+                                           f"sms_{sel_row.get('Lead_Name','lead')}.txt", "text/plain",
+                                           key="dl_sms")
 
             # ── Bulk generation hint ──
             st.divider()
+            has_key = bool(st.session_state.get("openai_key"))
+            key_hint = "" if has_key else " Add your OpenAI key in the sidebar for AI-personalized content."
             st.markdown(f"""
             <div class="alert-info">
-            💡 <b>Tip:</b> You have <b>{len(targets):,} {' & '.join(temp_sel_filter)} leads</b> ready for outreach.
-            Select each one above to generate personalized scripts. Add your OpenAI key in the sidebar for AI-personalized content.
+            💡 <b>Tip:</b> You have <b>{len(targets):,} {' &amp; '.join(temp_sel_filter) if temp_sel_filter else 'target'} leads</b> ready for outreach.
+            Select each one above, then click Generate.{key_hint}
             </div>
             """, unsafe_allow_html=True)
 

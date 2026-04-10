@@ -24,8 +24,8 @@ A production-ready CRM Lead Reactivation system for real estate agents — built
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/Anjanaramia/Reactivation-Engine.git
-cd Reactivation-Engine
+git clone https://github.com/Anjanaramia/Revenue-Recovery-Engine.git
+cd Revenue-Recovery-Engine
 ```
 
 ### 2. Install dependencies

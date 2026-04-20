@@ -5,6 +5,46 @@ Main UI for the CRM Lead Reactivation Engine.
 """
 
 import streamlit as st
+# ── EMAIL GATE ──────────────────────────────────────
+import re
+
+def is_valid_email(email):
+    return re.match(r"[^@]+@[^@]+\.[^@]+", email)
+
+if "access_granted" not in st.session_state:
+    st.session_state.access_granted = False
+
+if not st.session_state.access_granted:
+    st.markdown("## 🚀 AG Lead Reactivation Engine")
+    st.markdown("**Turn your dormant leads into closed deals — free for real estate agents.**")
+    st.divider()
+    
+    email = st.text_input("Enter your email to access the engine:")
+    name  = st.text_input("Your name (optional):")
+    
+    if st.button("Get Free Access"):
+        if is_valid_email(email):
+            # Save to a local CSV log
+            import csv, os
+            from datetime import datetime
+            log_file = "leads_captured.csv"
+            file_exists = os.path.isfile(log_file)
+            with open(log_file, "a", newline="") as f:
+                writer = csv.DictWriter(f, fieldnames=["timestamp","name","email"])
+                if not file_exists:
+                    writer.writeheader()
+                writer.writerow({
+                    "timestamp": datetime.now().isoformat(),
+                    "name": name,
+                    "email": email
+                })
+            st.session_state.access_granted = True
+            st.rerun()
+        else:
+            st.error("Please enter a valid email address.")
+    
+    st.stop()  # Nothing below renders until access is granted
+# ── END EMAIL GATE ───────────────────────────────────
 import pandas as pd
 import numpy as np
 import os

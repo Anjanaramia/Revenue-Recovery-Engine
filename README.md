@@ -6,7 +6,20 @@ A production-ready CRM Lead Reactivation system for real estate agents — built
 
 🚀 **Live Demo:** [revenue-recovery-engine.streamlit.app](https://revenue-recovery-engine.streamlit.app)
 
+---
 
+**The Problem:**
+
+Real estate agents spend $400–1,200 per lead on paid social ads.75% of those leads go cold within 90 days. Nobody follows up systematically — so agents buy more ads instead of working what
+they already paid for.
+
+**Salesforce Roadmap**
+
+## 🗺️ Roadmap
+- [ ] REST API wrapper (FastAPI) for Salesforce External Services integration
+- [ ] Agentforce Action — autonomous cold lead identification + outreach trigger
+- [ ] Named Credentials + Flow Builder trigger from Salesforce Contact records
+- [ ] AppExchange Bolt packaging for Real Estate vertical
 ## Features
 
 | Module | What it does |

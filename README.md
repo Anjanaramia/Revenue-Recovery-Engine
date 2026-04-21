@@ -13,9 +13,7 @@ A production-ready CRM Lead Reactivation system for real estate agents — built
 Real estate agents spend $400–1,200 per lead on paid social ads.75% of those leads go cold within 90 days. Nobody follows up systematically — so agents buy more ads instead of working what
 they already paid for.
 
-**Salesforce Roadmap**
-
-## 🗺️ Roadmap
+## 🗺️ Salesforce Roadmap
 - [ ] REST API wrapper (FastAPI) for Salesforce External Services integration
 - [ ] Agentforce Action — autonomous cold lead identification + outreach trigger
 - [ ] Named Credentials + Flow Builder trigger from Salesforce Contact records

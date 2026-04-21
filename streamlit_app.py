@@ -797,3 +797,23 @@ with tab5:
                     file_name=f"report_{active_name.replace(' ','_')}_{selected_month}.pdf",
                     mime="application/pdf",
                 )
+            # ── ADMIN: View captured leads ──────────────────────
+import os
+st.divider()
+admin_pw = st.text_input("Admin access:", type="password", key="admin")
+if admin_pw == "yourpassword123":  # change this to something only you know
+    log_file = "leads_captured.csv"
+    if os.path.isfile(log_file):
+        import pandas as pd
+        leads_df = pd.read_csv(log_file)
+        st.success(f"{len(leads_df)} leads captured so far")
+        st.dataframe(leads_df)
+        st.download_button(
+            "Download leads CSV",
+            leads_df.to_csv(index=False),
+            "captured_leads.csv",
+            "text/csv"
+        )
+    else:
+        st.info("No leads captured yet.")
+# ── END ADMIN ────────────────────────────────────────

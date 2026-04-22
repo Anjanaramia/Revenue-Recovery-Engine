@@ -1,3 +1,5 @@
+<img width="1872" height="517" alt="image" src="https://github.com/user-attachments/assets/06d467f4-fe60-4bec-94fc-8c2bb54dcebe" />
+
 # AG Lead Reactivation Engine
 
 A production-ready CRM Lead Reactivation system for real estate agents — built for solo operators managing 5–20 realtor clients on a monthly retainer.

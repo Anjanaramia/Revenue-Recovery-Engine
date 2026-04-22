@@ -4,7 +4,8 @@ A production-ready CRM Lead Reactivation system for real estate agents — built
 
 ---
 
-🚀 **Live Demo:** [revenue-recovery-engine.streamlit.app](https://revenue-recovery-engine.streamlit.app)
+🚀 **Live App:** [revenue-recovery-engine.streamlit.app](https://revenue-recovery-engine.streamlit.app)
+🚀 **Live Demo:** https://www.loom.com/share/b4ac1a12049844eab9b890b40f3dad58
 
 ---
 

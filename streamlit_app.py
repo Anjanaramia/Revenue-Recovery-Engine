@@ -15,7 +15,7 @@ if "access_granted" not in st.session_state:
     st.session_state.access_granted = False
 
 if not st.session_state.access_granted:
-    st.markdown("## 🚀 AG Lead Reactivation Engine")
+    st.markdown("## 🚀 Revenue Recovery Engine")
     st.markdown("**Turn your dormant leads into closed deals — free for real estate agents.**")
     st.divider()
     
@@ -65,7 +65,7 @@ from reporting import build_monthly_summary, export_report_csv, export_report_pd
 
 # ── Page Config ─────────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="AG Reactivation Engine",
+    page_title="Revenue Recovery Engine",
     page_icon="🚀",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -256,7 +256,7 @@ with st.sidebar:
 # ── Header ────────────────────────────────────────────────────────────────────────
 st.markdown("""
 <div class="app-header">
-  <h1>🚀 AG Lead Reactivation Engine</h1>
+  <h1>🚀 Revenue Recovery Engine</h1>
   <p>Turn your dormant leads into closed deals — for real estate agents on retainer.</p>
 </div>
 """, unsafe_allow_html=True)

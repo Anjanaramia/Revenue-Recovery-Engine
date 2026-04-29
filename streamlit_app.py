@@ -18,9 +18,21 @@ if not st.session_state.access_granted:
     st.markdown("## 🚀 Revenue Recovery Engine")
     st.markdown("**Turn your dormant leads into closed deals — free for real estate agents.**")
     st.divider()
+
+     st.markdown(
+        "<p style='color:#16a34a; font-size:0.9rem; font-weight:500;'>"
+        "✅ Currently in pilot with Bay Area realtors</p>",
+        unsafe_allow_html=True
+    )
     
     email = st.text_input("Enter your email to access the engine:")
     name  = st.text_input("Your name (optional):")
+    
+   st.markdown(
+        "<p style='color:#64748b; font-size:0.8rem;'>"
+        "No credit card. No commitment. Takes 5 minutes.</p>",
+        unsafe_allow_html=True
+    )
     
     if st.button("Get Free Access"):
         if is_valid_email(email):

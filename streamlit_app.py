@@ -812,7 +812,7 @@ with tab5:
 import os
 st.divider()
 admin_pw = st.text_input("Admin access:", type="password", key="admin")
-if admin_pw == "yourpassword123":  # change this to something only you know
+if admin_pw == "anjana1989":  # change this to something only you know
     log_file = "leads_captured.csv"
     if os.path.isfile(log_file):
         import pandas as pd

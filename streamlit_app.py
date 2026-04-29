@@ -33,7 +33,6 @@ if not st.session_state.access_granted:
         "No credit card. No commitment. Takes 5 minutes.</p>",
         unsafe_allow_html=True
     )
-    
     if st.button("Get Free Access"):
         if is_valid_email(email):
             # Save to a local CSV log

@@ -1,4 +1,5 @@
-<img width="1872" height="517" alt="image" src="https://github.com/user-attachments/assets/06d467f4-fe60-4bec-94fc-8c2bb54dcebe" />
+
+<img width="1596" height="497" alt="image" src="https://github.com/user-attachments/assets/3cdc310e-a1ae-4927-ad55-de4b6407467c" />
 
 # Revenue Recovery Engine
 

@@ -28,7 +28,7 @@ if not st.session_state.access_granted:
     email = st.text_input("Enter your email to access the engine:")
     name  = st.text_input("Your name (optional):")
     
-   st.markdown(
+     st.markdown(
         "<p style='color:#64748b; font-size:0.8rem;'>"
         "No credit card. No commitment. Takes 5 minutes.</p>",
         unsafe_allow_html=True

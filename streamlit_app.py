@@ -3,7 +3,12 @@ streamlit_app.py
 Main UI for the CRM Lead Reactivation Engine.
 5-tab layout: Upload & Clean | Score & Prioritize | Outreach Generator | Client Dashboard | Monthly Report
 """
-
+import logging
+logging.basicConfig(
+    filename='app_errors.log',
+    level=logging.ERROR,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 import streamlit as st
 # ── EMAIL GATE ──────────────────────────────────────
 import re

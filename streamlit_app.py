@@ -23,16 +23,16 @@ if not st.session_state.access_granted:
     st.markdown("## 🚀 Revenue Recovery Engine")
     st.markdown("**Turn your dormant leads into closed deals — free for real estate agents.**")
     st.divider()
-    
+
     st.markdown(
         "<p style='color:#16a34a; font-size:0.9rem; font-weight:500;'>"
         "✅ Currently in pilot with Bay Area realtors</p>",
         unsafe_allow_html=True
     )
-    
+
     email = st.text_input("Enter your email to access the engine:")
     name  = st.text_input("Your name (optional):")
-    
+
     st.markdown(
         "<p style='color:#64748b; font-size:0.8rem;'>"
         "No credit card. No commitment. Takes 5 minutes.</p>",
@@ -40,27 +40,30 @@ if not st.session_state.access_granted:
     )
     if st.button("Get Free Access"):
         if is_valid_email(email):
-            # Save to a local CSV log
             import csv, os
             from datetime import datetime
             log_file = "leads_captured.csv"
             file_exists = os.path.isfile(log_file)
-            with open(log_file, "a", newline="") as f:
-                writer = csv.DictWriter(f, fieldnames=["timestamp","name","email"])
-                if not file_exists:
-                    writer.writeheader()
-                writer.writerow({
-                    "timestamp": datetime.now().isoformat(),
-                    "name": name,
-                    "email": email
-                })
+            try:
+                with open(log_file, "a", newline="") as f:
+                    writer = csv.DictWriter(f, fieldnames=["timestamp","name","email"])
+                    if not file_exists:
+                        writer.writeheader()
+                    writer.writerow({
+                        "timestamp": datetime.now().isoformat(),
+                        "name": name,
+                        "email": email
+                    })
+            except Exception as e:
+                logging.error(f"Lead capture write failed: {e}")
             st.session_state.access_granted = True
             st.rerun()
         else:
             st.error("Please enter a valid email address.")
-    
+
     st.stop()  # Nothing below renders until access is granted
 # ── END EMAIL GATE ───────────────────────────────────
+
 import pandas as pd
 import numpy as np
 import os
@@ -179,7 +182,6 @@ def _init_state():
         "selected_client_name": None,
         "openai_key": os.getenv("OPENAI_API_KEY", ""),
         "upload_filename": None,
-        # Outreach: persist result across tab switches
         "outreach_result": None,
         "outreach_lead_name": None,
     }
@@ -191,7 +193,6 @@ _init_state()
 
 # ── Clipboard Helper ─────────────────────────────────────────────────────────────
 def _copy_button(text: str, button_label: str = "📋 Copy to Clipboard", key: str = "copy"):
-    """Render a copy-to-clipboard button using a JS snippet."""
     import streamlit.components.v1 as components
     escaped = text.replace("`", r"\`").replace("$", r"\$")
     components.html(
@@ -208,7 +209,6 @@ def _copy_button(text: str, button_label: str = "📋 Copy to Clipboard", key: s
     )
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────────
-
 with st.sidebar:
     st.markdown("### 🏢 Realtor Client")
 
@@ -249,11 +249,11 @@ with st.sidebar:
     st.divider()
     st.markdown("### ⚙️ Settings")
 
-    deal_value = st.number_input("Avg Deal Value ($)", value=50000, step=5000)
+    deal_value        = st.number_input("Avg Deal Value ($)", value=50000, step=5000)
     reactivation_rate = st.slider("Reactivation Rate (%)", 1, 20, 5)
-    hot_max   = st.slider("Hot (≤ X days)",  1,  60, 30)
-    warm_max  = st.slider("Warm (≤ X days)", 31, 180, 90)
-    cold_max  = st.slider("Cold (≤ X days)", 91, 365, 180)
+    hot_max           = st.slider("Hot (≤ X days)",  1,  60, 30)
+    warm_max          = st.slider("Warm (≤ X days)", 31, 180, 90)
+    cold_max          = st.slider("Cold (≤ X days)", 91, 365, 180)
 
     tiers = {"hot_max_days": hot_max, "warm_max_days": warm_max, "cold_max_days": cold_max}
 
@@ -297,22 +297,25 @@ with tab1:
     uploaded = st.file_uploader("Choose a CSV file", type=["csv"], key="csv_uploader")
 
     if uploaded:
-        # Only re-process (and reset scoring) if a NEW file was uploaded
         if uploaded.name != st.session_state.get("upload_filename"):
+            # ── EDIT: wrapped entire upload + clean block in try/except ──
             try:
                 raw = pd.read_csv(uploaded)
-                st.session_state["raw_df"] = raw
+                st.session_state["raw_df"]          = raw
                 st.session_state["upload_filename"] = uploaded.name
-                cleaned, report = clean_crm_data(raw)
-                st.session_state["cleaned_df"] = cleaned
-                st.session_state["quality_report"] = report
-                # Reset downstream state only on new upload
-                st.session_state["scored_df"] = None
-                st.session_state["revenue"] = None
-                st.session_state["outreach_result"] = None
+                cleaned, report                     = clean_crm_data(raw)
+                st.session_state["cleaned_df"]      = cleaned
+                st.session_state["quality_report"]  = report
+                st.session_state["scored_df"]        = None
+                st.session_state["revenue"]          = None
+                st.session_state["outreach_result"]  = None
                 st.session_state["outreach_lead_name"] = None
             except Exception as e:
-                st.error(f"Failed to read CSV: {e}")
+                logging.error(f"CSV upload/clean failed: {e}")
+                st.error(
+                    "We couldn't process this file. "
+                    "Please check it's a valid CRM CSV export and try again."
+                )
 
     if st.session_state.get("cleaned_df") is not None:
         cleaned = st.session_state["cleaned_df"]
@@ -360,7 +363,6 @@ with tab1:
         filter_issues = st.checkbox(f"Show only rows with issues ({n_issues})", value=False)
         display_df = cleaned[has_issues_mask] if filter_issues else cleaned
 
-        # Show core columns cleanly
         core_cols = [c for c in ["Lead_Name","Lead_Type","Email","Phone","Last_Contact_Date","Neighborhood"] if c in display_df.columns]
         st.dataframe(display_df[core_cols + flag_cols].head(200), use_container_width=True, height=320)
 
@@ -377,18 +379,28 @@ with tab1:
         # ── Proceed button ──
         st.divider()
         if st.button("▶️ Proceed to Scoring →", type="primary"):
-            scored, revenue = score_leads(cleaned, tiers=tiers, deal_value=deal_value, reactivation_rate=reactivation_rate)
-            st.session_state["scored_df"] = scored
-            st.session_state["revenue"]   = revenue
+            # ── EDIT: wrapped scoring in try/except ──
+            try:
+                scored, revenue = score_leads(
+                    cleaned,
+                    tiers=tiers,
+                    deal_value=deal_value,
+                    reactivation_rate=reactivation_rate
+                )
+                st.session_state["scored_df"] = scored
+                st.session_state["revenue"]   = revenue
 
-            # Auto-save run if client selected
-            client_obj = get_client_by_name(st.session_state["selected_client_name"] or "") if st.session_state["selected_client_name"] else None
-            if client_obj:
-                record_run(client_obj["id"], revenue, quality_score=report["score"])
+                client_obj = get_client_by_name(
+                    st.session_state["selected_client_name"] or ""
+                ) if st.session_state["selected_client_name"] else None
+                if client_obj:
+                    record_run(client_obj["id"], revenue, quality_score=report["score"])
 
-            st.success("✅ Scoring complete! Switch to the **Score & Prioritize** tab.")
+                st.success("✅ Scoring complete! Switch to the **Score & Prioritize** tab.")
+            except Exception as e:
+                logging.error(f"Scoring failed: {e}")
+                st.error("Scoring failed. Please check your data and try again.")
     else:
-        # Empty state
         st.markdown("""
         <div style="text-align:center;padding:3rem;color:#94a3b8;border:2px dashed #cbd5e1;border-radius:12px;margin-top:1rem;">
           <div style="font-size:3rem">📂</div>
@@ -402,7 +414,7 @@ with tab1:
 # ║  TAB 2 — SCORE & PRIORITIZE                                 ║
 # ╚══════════════════════════════════════════════════════════════╝
 with tab2:
-    scored = st.session_state.get("scored_df")
+    scored  = st.session_state.get("scored_df")
     revenue = st.session_state.get("revenue")
 
     if scored is None:
@@ -410,9 +422,9 @@ with tab2:
         <div class="alert-info">ℹ️ Upload and clean your CRM data in the <b>Upload & Clean</b> tab first, then click "Proceed to Scoring".</div>
         """, unsafe_allow_html=True)
     else:
-        # ── Revenue Metrics ──
         st.markdown('<p class="section-title">Opportunity Overview</p>', unsafe_allow_html=True)
         m1, m2, m3, m4, m5 = st.columns(5)
+
         def metric_card(col, label, value, delta=None, delta_positive=True):
             delta_html = ""
             if delta is not None:
@@ -426,17 +438,15 @@ with tab2:
             </div>
             """, unsafe_allow_html=True)
 
-        metric_card(m1, "Total Leads", f"{revenue['total_leads']:,}")
+        metric_card(m1, "Total Leads",          f"{revenue['total_leads']:,}")
         metric_card(m2, "⚫ Dormant (Primary)", f"{revenue['dormant_count']:,}")
-        metric_card(m3, "🔴 Hot", f"{revenue['hot_count']:,}")
-        metric_card(m4, "Est. Reactivations", f"{revenue['projected_reactivations']:.0f}")
-        metric_card(m5, "Projected Revenue", f"${revenue['projected_revenue']:,.0f}")
+        metric_card(m3, "🔴 Hot",               f"{revenue['hot_count']:,}")
+        metric_card(m4, "Est. Reactivations",   f"{revenue['projected_reactivations']:.0f}")
+        metric_card(m5, "Projected Revenue",    f"${revenue['projected_revenue']:,.0f}")
 
         st.markdown("")
 
-        # ── Tier filter ──
         st.markdown('<p class="section-title">Lead List</p>', unsafe_allow_html=True)
-
         col_filter, col_search = st.columns([3, 2])
         with col_filter:
             temp_filter = st.multiselect(
@@ -455,7 +465,6 @@ with tab2:
                     mask |= filtered[col].astype(str).str.contains(search_q, case=False, na=False)
             filtered = filtered[mask]
 
-        # Display columns
         disp_cols = get_display_columns(filtered)
         st.dataframe(
             filtered[disp_cols].rename(columns={"Temp_Badge": "🌡️", "Days_Since_Contact": "Days Idle"}),
@@ -464,7 +473,6 @@ with tab2:
         )
         st.caption(f"Showing {len(filtered):,} of {len(scored):,} leads")
 
-        # ── Buyer / Seller breakdown ──
         buyers, sellers = get_buyer_seller_split(scored)
         bc1, bc2 = st.columns(2)
         with bc1:
@@ -478,7 +486,6 @@ with tab2:
             dormant_s = int((sellers["Temperature"] == "Dormant").sum())
             st.metric("Dormant Sellers", dormant_s, delta=f"{dormant_s} to reactivate", delta_color="off")
 
-        # ── Exports ──
         st.markdown('<p class="section-title">Export</p>', unsafe_allow_html=True)
         ec1, ec2, ec3 = st.columns(3)
         with ec1:
@@ -502,7 +509,6 @@ with tab3:
     else:
         st.markdown('<p class="section-title">Generate Personalized Outreach</p>', unsafe_allow_html=True)
 
-        # Show only cold & dormant by default (primary targets)
         targets = scored[scored["Temperature"].isin(["Dormant", "Cold"])].copy()
 
         if len(targets) == 0:
@@ -510,7 +516,6 @@ with tab3:
         else:
             col_a, col_b = st.columns([2, 1])
             with col_a:
-                # Build display list for selector
                 if "Lead_Name" in targets.columns:
                     lead_options = targets["Lead_Name"].fillna("Unknown").astype(str).tolist()
                     lead_idxs    = targets.index.tolist()
@@ -518,12 +523,11 @@ with tab3:
                     lead_options = [f"Lead #{i}" for i in range(len(targets))]
                     lead_idxs    = targets.index.tolist()
 
-                # Zip index with badge
                 display_options = []
                 for idx, name in zip(lead_idxs, lead_options):
-                    temp  = targets.loc[idx, "Temperature"] if "Temperature" in targets.columns else "?"
-                    badge = TEMPERATURE_COLORS.get(temp, "⬜")
-                    days  = targets.loc[idx, "Days_Since_Contact"] if "Days_Since_Contact" in targets.columns else "?"
+                    temp     = targets.loc[idx, "Temperature"] if "Temperature" in targets.columns else "?"
+                    badge    = TEMPERATURE_COLORS.get(temp, "⬜")
+                    days     = targets.loc[idx, "Days_Since_Contact"] if "Days_Since_Contact" in targets.columns else "?"
                     days_str = f"{int(days)}d idle" if not (isinstance(days, float) and np.isnan(days)) else "?"
                     display_options.append(f"{badge} {name} — {temp} ({days_str})")
 
@@ -538,13 +542,12 @@ with tab3:
                 )
                 targets = scored[scored["Temperature"].isin(temp_sel_filter)].copy() if temp_sel_filter else targets
 
-            # Lead info card
             st.markdown('<p class="section-title">Lead Details</p>', unsafe_allow_html=True)
             info_cols = st.columns(4)
             info_fields = [
-                ("Lead Name", sel_row.get("Lead_Name", "—")),
-                ("Lead Type", sel_row.get("Lead_Type", "—")),
-                ("Temperature", sel_row.get("Temperature", "—")),
+                ("Lead Name",      sel_row.get("Lead_Name", "—")),
+                ("Lead Type",      sel_row.get("Lead_Type", "—")),
+                ("Temperature",    sel_row.get("Temperature", "—")),
                 ("Priority Score", f"{sel_row.get('Priority_Score','—')} / 10"),
             ]
             for i, (label, val) in enumerate(info_fields):
@@ -556,25 +559,30 @@ with tab3:
                 """, unsafe_allow_html=True)
 
             st.markdown("")
-
             gen_btn = st.button("✨ Generate Outreach", type="primary")
 
-            # Clear cached result when a different lead is selected
             if st.session_state.get("outreach_lead_name") != sel_row.get("Lead_Name"):
                 st.session_state["outreach_result"] = None
 
             if gen_btn:
                 with st.spinner("Generating personalized outreach…"):
-                    result = generate_outreach_for_row(
-                        sel_row,
-                        api_key=st.session_state["openai_key"] or None,
-                        model=model_choice,
-                    )
-                # Persist across tab switches
-                st.session_state["outreach_result"] = result
-                st.session_state["outreach_lead_name"] = sel_row.get("Lead_Name")
+                    # ── EDIT: wrapped outreach generation in try/except ──
+                    try:
+                        result = generate_outreach_for_row(
+                            sel_row,
+                            api_key=st.session_state["openai_key"] or None,
+                            model=model_choice,
+                        )
+                        st.session_state["outreach_result"]    = result
+                        st.session_state["outreach_lead_name"] = sel_row.get("Lead_Name")
+                    except Exception as e:
+                        logging.error(f"Outreach generation failed: {e}")
+                        st.error(
+                            "Outreach generation failed. "
+                            "If you're using OpenAI, check your API key in the sidebar. "
+                            "Built-in templates are still available — try without an API key."
+                        )
 
-            # Render persisted result (survives tab switches)
             result = st.session_state.get("outreach_result")
             if result:
                 badge = "🤖 AI-generated (OpenAI)" if result["generated_by"] == "openai" else "📝 Template-generated (built-in)"
@@ -615,9 +623,8 @@ with tab3:
                                            f"sms_{sel_row.get('Lead_Name','lead')}.txt", "text/plain",
                                            key="dl_sms")
 
-            # ── Bulk generation hint ──
             st.divider()
-            has_key = bool(st.session_state.get("openai_key"))
+            has_key  = bool(st.session_state.get("openai_key"))
             key_hint = "" if has_key else " Add your OpenAI key in the sidebar for AI-personalized content."
             st.markdown(f"""
             <div class="alert-info">
@@ -640,7 +647,6 @@ with tab4:
     else:
         st.markdown('<p class="section-title">All Realtor Clients</p>', unsafe_allow_html=True)
 
-        # Summary cards for each client
         cols_per_row = 3
         for i in range(0, len(clients), cols_per_row):
             row_clients = clients[i:i + cols_per_row]
@@ -653,7 +659,7 @@ with tab4:
                     total     = last.get("total_leads", 0) if last else 0
                     quality   = last.get("quality_score", "—") if last else "—"
                     is_active = st.session_state["selected_client_name"] == c["name"]
-                    border = "border:2px solid #2ECC71;" if is_active else ""
+                    border    = "border:2px solid #2ECC71;" if is_active else ""
                     st.markdown(f"""
                     <div class="metric-card" style="{border}margin-bottom:1rem">
                       <div style="font-size:1.1rem;font-weight:700;color:#1E3A5F">{"✅ " if is_active else "👤 "}{c['name']}</div>
@@ -676,7 +682,6 @@ with tab4:
                         st.session_state["selected_client_name"] = c["name"]
                         st.rerun()
 
-        # ── Selected client detail ──
         active_name = st.session_state.get("selected_client_name")
         if active_name:
             active_obj = get_client_by_name(active_name)
@@ -688,20 +693,19 @@ with tab4:
                     hist_rows = []
                     for r in runs:
                         hist_rows.append({
-                            "Run Date": r["run_date"][:10],
+                            "Run Date":    r["run_date"][:10],
                             "Total Leads": r["total_leads"],
-                            "Hot": r["hot_count"],
-                            "Warm": r["warm_count"],
-                            "Cold": r["cold_count"],
-                            "Dormant": r["dormant_count"],
-                            "Quality": f"{r['quality_score']}/100",
+                            "Hot":         r["hot_count"],
+                            "Warm":        r["warm_count"],
+                            "Cold":        r["cold_count"],
+                            "Dormant":     r["dormant_count"],
+                            "Quality":     f"{r['quality_score']}/100",
                         })
                     hist_df = pd.DataFrame(hist_rows)
                     st.dataframe(hist_df, use_container_width=True, hide_index=True)
                 else:
                     st.info("No processing history yet for this client. Upload their CSV in the Upload & Clean tab.")
 
-                # Delete button
                 st.divider()
                 with st.expander("⚠️ Danger Zone"):
                     if st.button(f"🗑️ Delete client '{active_name}'", type="secondary"):
@@ -727,18 +731,19 @@ with tab5:
 
             st.markdown(f'<p class="section-title">📊 Monthly Retainer Report — {active_name}</p>', unsafe_allow_html=True)
 
-            # Month selector
             months = []
-            now = datetime.now()
+            now    = datetime.now()
             for m in range(0, 6):
                 from datetime import timedelta
                 d = now.replace(day=1) - timedelta(days=m * 28)
                 months.append(d.strftime("%Y-%m"))
             months = sorted(set(months), reverse=True)
 
-            selected_month = st.selectbox("Select Month", months, format_func=lambda m: datetime.strptime(m, "%Y-%m").strftime("%B %Y"))
+            selected_month = st.selectbox(
+                "Select Month", months,
+                format_func=lambda m: datetime.strptime(m, "%Y-%m").strftime("%B %Y")
+            )
 
-            # Manual tracking inputs
             st.markdown('<p class="section-title">📬 Outreach Tracking (manual)</p>', unsafe_allow_html=True)
             tracking = get_or_create_monthly(client_id, selected_month)
 
@@ -754,25 +759,27 @@ with tab5:
                     value=int(tracking.get("responses_received", 0)), step=1
                 )
 
-            notes_val = st.text_area("Notes for this month", value=tracking.get("notes","") or "", height=100)
+            notes_val = st.text_area(
+                "Notes for this month",
+                value=tracking.get("notes","") or "",
+                height=100
+            )
 
             if st.button("💾 Save Tracking Data"):
                 upsert_monthly_tracking(client_id, selected_month, outreach_sent, responses_received, notes_val)
                 st.success("✅ Saved!")
 
-            # Build the summary
-            runs = get_client_runs(client_id, limit=6)
-            last_run = runs[0] if runs else None
+            runs        = get_client_runs(client_id, limit=6)
+            last_run    = runs[0] if runs else None
             monthly_data = get_or_create_monthly(client_id, selected_month)
-            # refresh after potential save
-            monthly_data["outreach_sent"] = outreach_sent
-            monthly_data["responses_received"] = responses_received
+            monthly_data["outreach_sent"]       = outreach_sent
+            monthly_data["responses_received"]  = responses_received
 
             summary = build_monthly_summary(active_name, selected_month, last_run, monthly_data, runs)
 
-            # ── Summary metrics ──
             st.markdown('<p class="section-title">This Month at a Glance</p>', unsafe_allow_html=True)
             sm1, sm2, sm3, sm4, sm5 = st.columns(5)
+
             def sm_card(col, label, val):
                 col.markdown(f"""
                 <div class="metric-card">
@@ -781,20 +788,18 @@ with tab5:
                 </div>
                 """, unsafe_allow_html=True)
 
-            sm_card(sm1, "Total Leads", summary["total_leads"])
-            sm_card(sm2, "⚫ Dormant", summary["dormant_count"])
+            sm_card(sm1, "Total Leads",  summary["total_leads"])
+            sm_card(sm2, "⚫ Dormant",   summary["dormant_count"])
             sm_card(sm3, "Outreach Sent", summary["outreach_sent"])
-            sm_card(sm4, "Responses", summary["responses_received"])
+            sm_card(sm4, "Responses",    summary["responses_received"])
             sm_card(sm5, "Response Rate", f"{summary['response_rate']}%")
 
-            # ── Trend chart ──
             if runs and len(runs) > 1:
                 st.markdown('<p class="section-title">Lead Trend (Last Runs)</p>', unsafe_allow_html=True)
                 trend_df = build_trend_dataframe(runs)
                 if not trend_df.empty:
                     st.line_chart(trend_df.set_index("Date")[["Dormant", "Cold", "Warm", "Hot"]])
 
-            # ── Export ──
             st.markdown('<p class="section-title">Export Report</p>', unsafe_allow_html=True)
             ex1, ex2 = st.columns(2)
             with ex1:
@@ -806,30 +811,50 @@ with tab5:
                     mime="text/csv",
                 )
             with ex2:
-                pdf_bytes = export_report_pdf(summary)
-                st.download_button(
-                    "⬇️ Download PDF Report",
-                    data=pdf_bytes,
-                    file_name=f"report_{active_name.replace(' ','_')}_{selected_month}.pdf",
-                    mime="application/pdf",
-                )
-            # ── ADMIN: View captured leads ──────────────────────
-import os
+                # ── EDIT: wrapped PDF export in try/except ──
+                try:
+                    pdf_bytes = export_report_pdf(summary)
+                    st.download_button(
+                        "⬇️ Download PDF Report",
+                        data=pdf_bytes,
+                        file_name=f"report_{active_name.replace(' ','_')}_{selected_month}.pdf",
+                        mime="application/pdf",
+                    )
+                except Exception as e:
+                    logging.error(f"PDF export failed: {e}")
+                    st.error("PDF generation failed. Please use the CSV export instead.")
+
+
+# ╔══════════════════════════════════════════════════════════════╗
+# ║  ADMIN — View captured leads                                ║
+# ╚══════════════════════════════════════════════════════════════╝
+# ── EDIT: password now read from Streamlit secrets ──
+# Add ADMIN_PASSWORD to your Streamlit Cloud secrets:
+#   Settings → Secrets → ADMIN_PASSWORD = "yourchosenpassword"
 st.divider()
 admin_pw = st.text_input("Admin access:", type="password", key="admin")
-if admin_pw == "anjana1989":  # change this to something only you know
+
+# Falls back to env var if secrets not configured (local dev)
+correct_pw = st.secrets.get("ADMIN_PASSWORD", os.getenv("ADMIN_PASSWORD", ""))
+
+if admin_pw and admin_pw == correct_pw:
     log_file = "leads_captured.csv"
     if os.path.isfile(log_file):
-        import pandas as pd
-        leads_df = pd.read_csv(log_file)
-        st.success(f"{len(leads_df)} leads captured so far")
-        st.dataframe(leads_df)
-        st.download_button(
-            "Download leads CSV",
-            leads_df.to_csv(index=False),
-            "captured_leads.csv",
-            "text/csv"
-        )
+        try:
+            leads_df = pd.read_csv(log_file)
+            st.success(f"✅ {len(leads_df)} leads captured so far")
+            st.dataframe(leads_df)
+            st.download_button(
+                "Download leads CSV",
+                leads_df.to_csv(index=False),
+                "captured_leads.csv",
+                "text/csv"
+            )
+        except Exception as e:
+            logging.error(f"Admin lead view failed: {e}")
+            st.error("Could not load leads file.")
     else:
         st.info("No leads captured yet.")
+elif admin_pw and admin_pw != correct_pw:
+    st.error("Incorrect password.")
 # ── END ADMIN ────────────────────────────────────────

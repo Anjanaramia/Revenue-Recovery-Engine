@@ -44,10 +44,8 @@ def _get_lead_type_weight(lead_type_val) -> float:
     if pd.isna(lead_type_val) or str(lead_type_val).strip() == "":
         return LEAD_TYPE_WEIGHTS["unknown"]
     key = str(lead_type_val).strip().lower()
-    # Try exact match first
     if key in LEAD_TYPE_WEIGHTS:
         return LEAD_TYPE_WEIGHTS[key]
-    # Partial match
     for k, w in LEAD_TYPE_WEIGHTS.items():
         if k in key or key in k:
             return w
@@ -76,14 +74,12 @@ def _recency_score(days: float, tiers: dict) -> float:
     if days <= tiers["hot_max_days"]:
         return 1.0
     elif days <= tiers["warm_max_days"]:
-        # scale from 1.0 down to 0.65
         frac = (days - tiers["hot_max_days"]) / (tiers["warm_max_days"] - tiers["hot_max_days"])
         return 1.0 - frac * 0.35
     elif days <= tiers["cold_max_days"]:
         frac = (days - tiers["warm_max_days"]) / (tiers["cold_max_days"] - tiers["warm_max_days"])
         return 0.65 - frac * 0.25
     else:
-        # Dormant: score 0.40 but bumped by reactivation value multiplier elsewhere
         capped = min(days, 730)
         frac = (capped - tiers["cold_max_days"]) / (730 - tiers["cold_max_days"])
         return max(0.05, 0.40 - frac * 0.30)
@@ -101,7 +97,6 @@ def _contact_completeness_score(row: pd.Series) -> float:
 
 
 # ── Priority Score ──────────────────────────────────────────────────────────────
-# Weighted combination → final score 1–10
 
 WEIGHTS = {
     "recency": 0.50,
@@ -115,28 +110,27 @@ def compute_priority_score(row: pd.Series, tiers: dict) -> int:
     days = row.get("Days_Since_Contact", np.nan)
     temp = row.get("Temperature", "Unknown")
 
-    recency = _recency_score(days, tiers)
-    lead_type_w = _get_lead_type_weight(row.get("Lead_Type", ""))
+    recency      = _recency_score(days, tiers)
+    lead_type_w  = _get_lead_type_weight(row.get("Lead_Type", ""))
     completeness = _contact_completeness_score(row)
 
-    raw = (recency * WEIGHTS["recency"] +
-           lead_type_w * WEIGHTS["lead_type"] +
+    raw = (recency      * WEIGHTS["recency"] +
+           lead_type_w  * WEIGHTS["lead_type"] +
            completeness * WEIGHTS["contact_completeness"])
 
-    # Dormant leads: add a reactivation opportunity bonus so they rank high
     if temp == "Dormant":
         raw = min(raw + 0.15, 1.0)
 
-    score = int(round(raw * 9)) + 1  # map [0,1] → [1,10]
+    score = int(round(raw * 9)) + 1
     return max(1, min(10, score))
 
 
 # ── Next Action Recommendations ─────────────────────────────────────────────────
 
 ACTION_MAP = {
-    "Hot": "📞 Call within 24 hrs + personalized email",
-    "Warm": "✉️ Email sequence + SMS check-in",
-    "Cold": "💧 Monthly nurture drip campaign",
+    "Hot":     "📞 Call within 24 hrs + personalized email",
+    "Warm":    "✉️ Email sequence + SMS check-in",
+    "Cold":    "💧 Monthly nurture drip campaign",
     "Dormant": "🚀 Launch reactivation campaign (PRIMARY TARGET)",
     "Unknown": "🔍 Verify lead contact info",
 }
@@ -147,52 +141,93 @@ def get_next_action(temperature: str) -> str:
 
 
 # ── Revenue Projection ──────────────────────────────────────────────────────────
+# ── EDIT: added cpl parameter and three new sunk-cost recovery metrics ──────────
 
-def project_revenue(df: pd.DataFrame, deal_value: float, reactivation_rate: float) -> dict:
+def project_revenue(
+    df: pd.DataFrame,
+    deal_value: float,
+    reactivation_rate: float,
+    cpl: float = 0.0,          # ← NEW: avg cost per lead, default 0 (no change if not supplied)
+) -> dict:
     dormant_count = int((df["Temperature"] == "Dormant").sum())
-    cold_count = int((df["Temperature"] == "Cold").sum())
-    warm_count = int((df["Temperature"] == "Warm").sum())
-    hot_count = int((df["Temperature"] == "Hot").sum())
-    total = len(df)
+    cold_count    = int((df["Temperature"] == "Cold").sum())
+    warm_count    = int((df["Temperature"] == "Warm").sum())
+    hot_count     = int((df["Temperature"] == "Hot").sum())
+    total         = len(df)
 
     projected_reactivations = dormant_count * (reactivation_rate / 100)
-    projected_revenue = projected_reactivations * deal_value
+    projected_revenue       = projected_reactivations * deal_value
+
+    # ── Sunk cost recovery metrics (new) ────────────────────────────────────────
+    # total_spend_at_risk: what the realtor already paid to generate ALL dormant leads
+    total_spend_at_risk = dormant_count * cpl
+
+    # recoverable_spend: the portion of that spend tied to leads the engine
+    # estimates can be reactivated (projected_reactivations × CPL)
+    recoverable_spend = projected_reactivations * cpl
+
+    # recovery_roi: for every $1 spent recovering these leads (via the engine),
+    # what is the projected revenue return?
+    # Formula: projected_revenue ÷ total_spend_at_risk
+    # Guard against division by zero when CPL = 0
+    if total_spend_at_risk > 0:
+        recovery_roi = round(projected_revenue / total_spend_at_risk, 1)
+    else:
+        recovery_roi = 0.0
+    # ── End sunk cost recovery metrics ──────────────────────────────────────────
 
     return {
-        "total_leads": total,
-        "hot_count": hot_count,
-        "warm_count": warm_count,
-        "cold_count": cold_count,
-        "dormant_count": dormant_count,
-        "projected_reactivations": round(projected_reactivations, 1),
-        "projected_revenue": int(projected_revenue),
-        "deal_value": deal_value,
-        "reactivation_rate": reactivation_rate,
+        "total_leads":              total,
+        "hot_count":                hot_count,
+        "warm_count":               warm_count,
+        "cold_count":               cold_count,
+        "dormant_count":            dormant_count,
+        "projected_reactivations":  round(projected_reactivations, 1),
+        "projected_revenue":        int(projected_revenue),
+        "deal_value":               deal_value,
+        "reactivation_rate":        reactivation_rate,
+        # ── New keys ────────────────────────────────────
+        "cpl":                      cpl,
+        "total_spend_at_risk":      int(total_spend_at_risk),
+        "recoverable_spend":        int(recoverable_spend),
+        "recovery_roi":             recovery_roi,
     }
 
 
 # ── Main Scoring Pipeline ───────────────────────────────────────────────────────
+# ── EDIT: added cpl parameter, passed through to project_revenue ────────────────
 
 def score_leads(
     df: pd.DataFrame,
     tiers: dict | None = None,
     deal_value: float = 50_000,
     reactivation_rate: float = 5.0,
+    cpl: float = 0.0,          # ← NEW: avg cost per lead
 ) -> tuple[pd.DataFrame, dict]:
     """
     Score all leads and return enriched DataFrame plus revenue projection.
 
-    Expects df to already have been through clean_crm_data() so columns are standardized
-    and flag columns exist.
+    Expects df to already have been through clean_crm_data() so columns are
+    standardized and flag columns exist.
 
-    Returns:
-        scored_df   - Original columns + Days_Since_Contact, Temperature, Priority_Score, Next_Action
-        revenue     - dict with projection numbers
+    Parameters
+    ----------
+    df                : cleaned CRM DataFrame
+    tiers             : recency tier thresholds (days)
+    deal_value        : average deal value in dollars
+    reactivation_rate : estimated % of dormant leads that reactivate
+    cpl               : average cost per lead in dollars (used for sunk-cost metrics)
+
+    Returns
+    -------
+    scored_df  - original columns + Days_Since_Contact, Temperature,
+                 Priority_Score, Next_Action, Temp_Badge
+    revenue    - dict with projection + sunk-cost recovery numbers
     """
     if tiers is None:
         tiers = DEFAULT_TIERS
 
-    df = df.copy()
+    df    = df.copy()
     today = pd.Timestamp(datetime.now().date())
 
     # Days since last contact
@@ -202,37 +237,54 @@ def score_leads(
         df["Days_Since_Contact"] = np.nan
 
     # Temperature tier
-    df["Temperature"] = df["Days_Since_Contact"].apply(lambda d: classify_temperature(d, tiers))
+    df["Temperature"] = df["Days_Since_Contact"].apply(
+        lambda d: classify_temperature(d, tiers)
+    )
 
     # Priority score (per row)
-    df["Priority_Score"] = df.apply(lambda row: compute_priority_score(row, tiers), axis=1)
+    df["Priority_Score"] = df.apply(
+        lambda row: compute_priority_score(row, tiers), axis=1
+    )
 
     # Next action
     df["Next_Action"] = df["Temperature"].apply(get_next_action)
 
-    # Temperature badge (emoji prefix)
+    # Temperature badge
     df["Temp_Badge"] = df["Temperature"].map(TEMPERATURE_COLORS)
 
-    # Sort: Dormant first (primary target), then by priority score descending
+    # Sort: Dormant first, then by priority score descending
     temp_order = {"Dormant": 0, "Cold": 1, "Warm": 2, "Hot": 3, "Unknown": 4}
     df["_temp_sort"] = df["Temperature"].map(temp_order)
-    df.sort_values(["_temp_sort", "Priority_Score"], ascending=[True, False], inplace=True)
+    df.sort_values(
+        ["_temp_sort", "Priority_Score"],
+        ascending=[True, False],
+        inplace=True,
+    )
     df.drop(columns=["_temp_sort"], inplace=True)
     df.reset_index(drop=True, inplace=True)
 
-    revenue = project_revenue(df, deal_value, reactivation_rate)
+    # ── EDIT: pass cpl into project_revenue ─────────────────────────────────────
+    revenue = project_revenue(df, deal_value, reactivation_rate, cpl=cpl)
 
     return df, revenue
 
+
+# ── Helpers ─────────────────────────────────────────────────────────────────────
 
 def get_leads_by_temperature(df: pd.DataFrame, temperature: str) -> pd.DataFrame:
     return df[df["Temperature"] == temperature].copy()
 
 
-def get_buyer_seller_split(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+def get_buyer_seller_split(
+    df: pd.DataFrame,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Return (buyers_df, sellers_df) — case-insensitive match."""
-    lead_type_lower = df.get("Lead_Type", pd.Series([""] * len(df))).astype(str).str.lower()
-    buyers = df[lead_type_lower.str.contains("buyer", na=False)].copy()
+    lead_type_lower = (
+        df.get("Lead_Type", pd.Series([""] * len(df)))
+        .astype(str)
+        .str.lower()
+    )
+    buyers  = df[lead_type_lower.str.contains("buyer",  na=False)].copy()
     sellers = df[lead_type_lower.str.contains("seller", na=False)].copy()
     return buyers, sellers
 

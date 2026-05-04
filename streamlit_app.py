@@ -251,9 +251,24 @@ with st.sidebar:
 
     deal_value        = st.number_input("Avg Deal Value ($)", value=50000, step=5000)
     reactivation_rate = st.slider("Reactivation Rate (%)", 1, 20, 5)
-    hot_max           = st.slider("Hot (≤ X days)",  1,  60, 30)
-    warm_max          = st.slider("Warm (≤ X days)", 31, 180, 90)
-    cold_max          = st.slider("Cold (≤ X days)", 91, 365, 180)
+
+    # ── EDIT 1: CPL input ──────────────────────────────────────────────────────
+    cpl = st.number_input(
+        "Avg Cost Per Lead ($)",
+        min_value=0,
+        value=200,
+        step=25,
+        help=(
+            "Your average acquisition cost per lead from paid channels "
+            "(Instagram, Zillow, etc.). Used to calculate total spend at risk "
+            "and your recovery ROI. Leave at 0 to hide these metrics."
+        ),
+    )
+    # ── END EDIT 1 ────────────────────────────────────────────────────────────
+
+    hot_max  = st.slider("Hot (≤ X days)",  1,  60, 30)
+    warm_max = st.slider("Warm (≤ X days)", 31, 180, 90)
+    cold_max = st.slider("Cold (≤ X days)", 91, 365, 180)
 
     tiers = {"hot_max_days": hot_max, "warm_max_days": warm_max, "cold_max_days": cold_max}
 
@@ -298,17 +313,16 @@ with tab1:
 
     if uploaded:
         if uploaded.name != st.session_state.get("upload_filename"):
-            # ── EDIT: wrapped entire upload + clean block in try/except ──
             try:
                 raw = pd.read_csv(uploaded)
-                st.session_state["raw_df"]          = raw
-                st.session_state["upload_filename"] = uploaded.name
-                cleaned, report                     = clean_crm_data(raw)
-                st.session_state["cleaned_df"]      = cleaned
-                st.session_state["quality_report"]  = report
-                st.session_state["scored_df"]        = None
-                st.session_state["revenue"]          = None
-                st.session_state["outreach_result"]  = None
+                st.session_state["raw_df"]             = raw
+                st.session_state["upload_filename"]    = uploaded.name
+                cleaned, report                        = clean_crm_data(raw)
+                st.session_state["cleaned_df"]         = cleaned
+                st.session_state["quality_report"]     = report
+                st.session_state["scored_df"]          = None
+                st.session_state["revenue"]            = None
+                st.session_state["outreach_result"]    = None
                 st.session_state["outreach_lead_name"] = None
             except Exception as e:
                 logging.error(f"CSV upload/clean failed: {e}")
@@ -379,14 +393,16 @@ with tab1:
         # ── Proceed button ──
         st.divider()
         if st.button("▶️ Proceed to Scoring →", type="primary"):
-            # ── EDIT: wrapped scoring in try/except ──
             try:
+                # ── EDIT 2: pass cpl into score_leads ─────────────────────────
                 scored, revenue = score_leads(
                     cleaned,
                     tiers=tiers,
                     deal_value=deal_value,
-                    reactivation_rate=reactivation_rate
+                    reactivation_rate=reactivation_rate,
+                    cpl=cpl,
                 )
+                # ── END EDIT 2 ────────────────────────────────────────────────
                 st.session_state["scored_df"] = scored
                 st.session_state["revenue"]   = revenue
 
@@ -443,6 +459,48 @@ with tab2:
         metric_card(m3, "🔴 Hot",               f"{revenue['hot_count']:,}")
         metric_card(m4, "Est. Reactivations",   f"{revenue['projected_reactivations']:.0f}")
         metric_card(m5, "Projected Revenue",    f"${revenue['projected_revenue']:,.0f}")
+
+        # ── EDIT 3: Sunk Cost Recovery section (only shown when CPL > 0) ──────
+        if revenue.get("cpl", 0) > 0:
+            st.markdown("")
+            st.markdown(
+                '<p class="section-title">💸 Sunk Cost Recovery</p>',
+                unsafe_allow_html=True,
+            )
+            mc1, mc2, mc3 = st.columns(3)
+            metric_card(
+                mc1,
+                "Spend at Risk",
+                f"${revenue['total_spend_at_risk']:,}",
+                delta="Dormant leads × CPL",
+                delta_positive=False,
+            )
+            metric_card(
+                mc2,
+                "Recoverable Spend",
+                f"${revenue['recoverable_spend']:,}",
+                delta=f"Based on {revenue['reactivation_rate']}% reactivation rate",
+                delta_positive=True,
+            )
+            metric_card(
+                mc3,
+                "Recovery ROI",
+                f"{revenue['recovery_roi']}x",
+                delta="Projected revenue ÷ spend at risk",
+                delta_positive=True,
+            )
+            st.markdown(
+                f"""
+                <div class="alert-info" style="margin-top:0.5rem">
+                💡 You spent <b>${revenue['total_spend_at_risk']:,}</b> generating these dormant leads.
+                Recovering even {revenue['reactivation_rate']}% returns
+                <b>${revenue['projected_revenue']:,}</b> in projected revenue —
+                a <b>{revenue['recovery_roi']}x return</b> on your original acquisition spend.
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        # ── END EDIT 3 ────────────────────────────────────────────────────────
 
         st.markdown("")
 
@@ -566,7 +624,6 @@ with tab3:
 
             if gen_btn:
                 with st.spinner("Generating personalized outreach…"):
-                    # ── EDIT: wrapped outreach generation in try/except ──
                     try:
                         result = generate_outreach_for_row(
                             sel_row,
@@ -769,11 +826,11 @@ with tab5:
                 upsert_monthly_tracking(client_id, selected_month, outreach_sent, responses_received, notes_val)
                 st.success("✅ Saved!")
 
-            runs        = get_client_runs(client_id, limit=6)
-            last_run    = runs[0] if runs else None
+            runs         = get_client_runs(client_id, limit=6)
+            last_run     = runs[0] if runs else None
             monthly_data = get_or_create_monthly(client_id, selected_month)
-            monthly_data["outreach_sent"]       = outreach_sent
-            monthly_data["responses_received"]  = responses_received
+            monthly_data["outreach_sent"]      = outreach_sent
+            monthly_data["responses_received"] = responses_received
 
             summary = build_monthly_summary(active_name, selected_month, last_run, monthly_data, runs)
 
@@ -788,10 +845,10 @@ with tab5:
                 </div>
                 """, unsafe_allow_html=True)
 
-            sm_card(sm1, "Total Leads",  summary["total_leads"])
-            sm_card(sm2, "⚫ Dormant",   summary["dormant_count"])
+            sm_card(sm1, "Total Leads",   summary["total_leads"])
+            sm_card(sm2, "⚫ Dormant",    summary["dormant_count"])
             sm_card(sm3, "Outreach Sent", summary["outreach_sent"])
-            sm_card(sm4, "Responses",    summary["responses_received"])
+            sm_card(sm4, "Responses",     summary["responses_received"])
             sm_card(sm5, "Response Rate", f"{summary['response_rate']}%")
 
             if runs and len(runs) > 1:
@@ -811,7 +868,6 @@ with tab5:
                     mime="text/csv",
                 )
             with ex2:
-                # ── EDIT: wrapped PDF export in try/except ──
                 try:
                     pdf_bytes = export_report_pdf(summary)
                     st.download_button(
@@ -828,13 +884,9 @@ with tab5:
 # ╔══════════════════════════════════════════════════════════════╗
 # ║  ADMIN — View captured leads                                ║
 # ╚══════════════════════════════════════════════════════════════╝
-# ── EDIT: password now read from Streamlit secrets ──
-# Add ADMIN_PASSWORD to your Streamlit Cloud secrets:
-#   Settings → Secrets → ADMIN_PASSWORD = "yourchosenpassword"
 st.divider()
 admin_pw = st.text_input("Admin access:", type="password", key="admin")
 
-# Falls back to env var if secrets not configured (local dev)
 correct_pw = st.secrets.get("ADMIN_PASSWORD", os.getenv("ADMIN_PASSWORD", ""))
 
 if admin_pw and admin_pw == correct_pw:

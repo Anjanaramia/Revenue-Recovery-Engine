@@ -39,6 +39,8 @@ COLUMN_MAP = {
     "notes": "Notes", "note": "Notes", "comments": "Notes",
     "neighborhood": "Neighborhood", "area": "Neighborhood", "location": "Neighborhood",
     "source": "Lead_Source", "lead_source": "Lead_Source",
+    "origin": "Lead_Source", "lead_origin": "Lead_Source",
+    "channel": "Lead_Source", "acquisition_source": "Lead_Source",
     "agent": "Agent_Name", "agent_name": "Agent_Name", "realtor": "Agent_Name",
 }
 

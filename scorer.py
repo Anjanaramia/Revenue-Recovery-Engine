@@ -1,5 +1,5 @@
 """
-scorer.py
+reactivation_engine.py
 Multi-signal lead scoring engine for the CRM Lead Reactivation Engine.
 Signals: recency (50%), lead type (25%), contact completeness (25%)
          × lead source multiplier (real estate specific)

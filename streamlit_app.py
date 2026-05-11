@@ -99,7 +99,6 @@ html, body, [class*="css"] {
     font-family: 'Inter', sans-serif;
 }
 
-/* ── Header gradient banner ── */
 .app-header {
     background: linear-gradient(135deg, #1E3A5F 0%, #2C5F8A 50%, #1a8a5a 100%);
     padding: 1.5rem 2rem;
@@ -111,7 +110,6 @@ html, body, [class*="css"] {
 .app-header h1 { color: white; margin: 0; font-size: 1.8rem; font-weight: 700; }
 .app-header p  { color: rgba(255,255,255,0.8); margin: 0.25rem 0 0; font-size: 0.9rem; }
 
-/* ── Metric cards ── */
 .metric-card {
     background: white;
     border: 1px solid #e2e8f0;
@@ -124,24 +122,20 @@ html, body, [class*="css"] {
 .metric-card .value { font-size: 1.8rem; font-weight: 700; color: #1E3A5F; margin-top: 0.2rem; }
 .metric-card .delta { font-size: 0.75rem; margin-top: 0.1rem; }
 
-/* ── Temperature badges ── */
 .badge-hot     { background:#fee2e2; color:#991b1b; padding:3px 10px; border-radius:999px; font-weight:600; font-size:0.8rem; }
 .badge-warm    { background:#fef9c3; color:#854d0e; padding:3px 10px; border-radius:999px; font-weight:600; font-size:0.8rem; }
 .badge-cold    { background:#dbeafe; color:#1e40af; padding:3px 10px; border-radius:999px; font-weight:600; font-size:0.8rem; }
 .badge-dormant { background:#f1f5f9; color:#334155; padding:3px 10px; border-radius:999px; font-weight:600; font-size:0.8rem; border:1px solid #94a3b8; }
 
-/* ── Quality score bar ── */
 .quality-bar-wrap { background:#e2e8f0; border-radius:999px; height:12px; margin:8px 0; }
 .quality-bar-fill { height:12px; border-radius:999px; transition: width 0.5s; }
 
-/* ── Section titles ── */
 .section-title {
     font-size: 1.1rem; font-weight: 600; color: #1E3A5F;
     border-left: 4px solid #2ECC71;
     padding-left: 0.6rem; margin: 1.2rem 0 0.8rem;
 }
 
-/* ── Outreach card ── */
 .outreach-card {
     background: #f8fafc;
     border: 1px solid #e2e8f0;
@@ -154,16 +148,13 @@ html, body, [class*="css"] {
     font-family: 'Inter', sans-serif;
 }
 
-/* ── Alert banner ── */
 .alert-success { background:#dcfce7; border-left:4px solid #16a34a; padding:0.7rem 1rem; border-radius:6px; color:#166534; font-size:0.9rem; }
 .alert-warning { background:#fef9c3; border-left:4px solid #ca8a04; padding:0.7rem 1rem; border-radius:6px; color:#854d0e; font-size:0.9rem; }
 .alert-info    { background:#dbeafe; border-left:4px solid #2563eb; padding:0.7rem 1rem; border-radius:6px; color:#1e40af; font-size:0.9rem; }
 
-/* ── Tab styling ── */
 .stTabs [data-baseweb="tab-list"] { gap: 0.5rem; }
 .stTabs [data-baseweb="tab"] { border-radius: 8px 8px 0 0; padding: 0.5rem 1rem; font-weight: 500; }
 
-/* ── Sidebar ── */
 section[data-testid="stSidebar"] { background: #f8fafc; }
 </style>
 """, unsafe_allow_html=True)
@@ -264,11 +255,11 @@ with st.sidebar:
             "and your recovery ROI. Leave at 0 to hide these metrics."
         ),
     )
-    # ── END EDIT 1 ────────────────────────────────────────────────────────────
+    # ── END EDIT 1 ─────────────────────────────────────────────────────────────
 
-    hot_max  = st.slider("Hot (≤ X days)",  1,  60, 30)
-    warm_max = st.slider("Warm (≤ X days)", 31, 180, 90)
-    cold_max = st.slider("Cold (≤ X days)", 91, 365, 180)
+    hot_max           = st.slider("Hot (≤ X days)",  1,  60, 30)
+    warm_max          = st.slider("Warm (≤ X days)", 31, 180, 90)
+    cold_max          = st.slider("Cold (≤ X days)", 91, 365, 180)
 
     tiers = {"hot_max_days": hot_max, "warm_max_days": warm_max, "cold_max_days": cold_max}
 
@@ -335,7 +326,6 @@ with tab1:
         cleaned = st.session_state["cleaned_df"]
         report  = st.session_state["quality_report"]
 
-        # ── Quality Score ──
         score = report["score"]
         score_color = "#16a34a" if score >= 75 else "#ca8a04" if score >= 50 else "#dc2626"
         st.markdown(f"""
@@ -347,7 +337,6 @@ with tab1:
         <p style="color:#64748b;font-size:0.85rem">{report['total_rows']:,} leads loaded from <b>{st.session_state['upload_filename']}</b></p>
         """, unsafe_allow_html=True)
 
-        # ── Issues ──
         if report["issues"]:
             st.markdown('<p class="section-title">Issues Found</p>', unsafe_allow_html=True)
             for issue in report["issues"]:
@@ -355,7 +344,6 @@ with tab1:
         else:
             st.markdown('<div class="alert-success">✅ No data quality issues found!</div>', unsafe_allow_html=True)
 
-        # ── Breakdown ──
         st.markdown('<p class="section-title">Field Completeness Breakdown</p>', unsafe_allow_html=True)
         bd = report["breakdown"]
         cols = st.columns(len(bd))
@@ -368,7 +356,6 @@ with tab1:
             </div>
             """, unsafe_allow_html=True)
 
-        # ── Preview ──
         st.markdown('<p class="section-title">Cleaned Data Preview</p>', unsafe_allow_html=True)
         flag_cols = [c for c in cleaned.columns if c.startswith("Flag_")]
         has_issues_mask = cleaned[flag_cols].any(axis=1) if flag_cols else pd.Series([False] * len(cleaned))
@@ -380,7 +367,6 @@ with tab1:
         core_cols = [c for c in ["Lead_Name","Lead_Type","Email","Phone","Last_Contact_Date","Neighborhood"] if c in display_df.columns]
         st.dataframe(display_df[core_cols + flag_cols].head(200), use_container_width=True, height=320)
 
-        # ── Export ──
         st.markdown('<p class="section-title">Download Cleaned CSV</p>', unsafe_allow_html=True)
         export_df = get_cleaned_export(cleaned)
         st.download_button(
@@ -390,7 +376,6 @@ with tab1:
             mime="text/csv",
         )
 
-        # ── Proceed button ──
         st.divider()
         if st.button("▶️ Proceed to Scoring →", type="primary"):
             try:
@@ -402,7 +387,7 @@ with tab1:
                     reactivation_rate=reactivation_rate,
                     cpl=cpl,
                 )
-                # ── END EDIT 2 ────────────────────────────────────────────────
+                # ── END EDIT 2 ─────────────────────────────────────────────────
                 st.session_state["scored_df"] = scored
                 st.session_state["revenue"]   = revenue
 
@@ -460,7 +445,7 @@ with tab2:
         metric_card(m4, "Est. Reactivations",   f"{revenue['projected_reactivations']:.0f}")
         metric_card(m5, "Projected Revenue",    f"${revenue['projected_revenue']:,.0f}")
 
-        # ── EDIT 3: Sunk Cost Recovery section (only shown when CPL > 0) ──────
+        # ── EDIT 3: Sunk Cost Recovery section (hidden when CPL = 0) ──────────
         if revenue.get("cpl", 0) > 0:
             st.markdown("")
             st.markdown(
@@ -486,7 +471,7 @@ with tab2:
                 mc3,
                 "Recovery ROI",
                 f"{revenue['recovery_roi']}x",
-                delta="Projected revenue ÷ spend at risk",
+                delta="Revenue ÷ spend at risk",
                 delta_positive=True,
             )
             st.markdown(
@@ -495,12 +480,12 @@ with tab2:
                 💡 You spent <b>${revenue['total_spend_at_risk']:,}</b> generating these dormant leads.
                 Recovering even {revenue['reactivation_rate']}% returns
                 <b>${revenue['projected_revenue']:,}</b> in projected revenue —
-                a <b>{revenue['recovery_roi']}x return</b> on your original acquisition spend.
+                a <b>{revenue['recovery_roi']}x return</b> on your original ad spend.
                 </div>
                 """,
                 unsafe_allow_html=True,
             )
-        # ── END EDIT 3 ────────────────────────────────────────────────────────
+        # ── END EDIT 3 ─────────────────────────────────────────────────────────
 
         st.markdown("")
 

@@ -21,16 +21,22 @@ if "access_granted" not in st.session_state:
 
 if not st.session_state.access_granted:
     st.markdown("## 🚀 Revenue Recovery Engine")
-    st.markdown("**Turn your dormant leads into closed deals — free for real estate agents.**")
+    st.markdown("**The average real estate agent has $30,000+ in dormant leads sitting in their CRM.**")
+    st.markdown("This engine finds them, scores them, and writes the reactivation message. Free for real estate agents.")
     st.divider()
 
     st.markdown(
-        "<p style='color:#16a34a; font-size:0.9rem; font-weight:500;'>"
-        "✅ Currently in pilot with Bay Area realtors</p>",
-        unsafe_allow_html=True
+    "<p style='color:#16a34a; font-size:0.9rem; font-weight:500;'>"
+    "✅ 10 real estate agents have accessed the engine · Bay Area pilot active</p>",
+    unsafe_allow_html=True
     )
 
-    email = st.text_input("Enter your email to access the engine:")
+    st.markdown(
+    "<p style='color:#1E3A5F; font-size:0.95rem; font-weight:500; margin-bottom:0;'>"
+    "👇 Enter your email to see your leads scored and prioritised in under 60 seconds.</p>",
+    unsafe_allow_html=True
+    )
+    email = st.text_input("Work email:")
     name  = st.text_input("Your name (optional):")
 
     st.markdown(

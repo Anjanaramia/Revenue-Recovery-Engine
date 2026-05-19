@@ -46,31 +46,31 @@ if not st.session_state.access_granted:
     )
     
     if st.button("Get Free Access"):
-    if is_valid_email(email):
-        import sqlite3, os
-        from datetime import datetime
-        try:
-            conn = sqlite3.connect("leads.db")
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS leads (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    timestamp TEXT,
-                    name TEXT,
-                    email TEXT UNIQUE
+        if is_valid_email(email):
+            import sqlite3, os
+            from datetime import datetime
+            try:
+                conn = sqlite3.connect("leads.db")
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS leads (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        timestamp TEXT,
+                        name TEXT,
+                        email TEXT UNIQUE
+                    )
+                """)
+                conn.execute(
+                    "INSERT OR IGNORE INTO leads (timestamp, name, email) VALUES (?, ?, ?)",
+                    (datetime.now().isoformat(), name, email)
                 )
-            """)
-            conn.execute(
-                "INSERT OR IGNORE INTO leads (timestamp, name, email) VALUES (?, ?, ?)",
-                (datetime.now().isoformat(), name, email)
-            )
-            conn.commit()
-            conn.close()
-        except Exception as e:
-            logging.error(f"Lead capture write failed: {e}")
-        st.session_state.access_granted = True
-        st.rerun()
-    else:
-        st.error("Please enter a valid email address.")
+                conn.commit()
+                conn.close()
+            except Exception as e:
+                logging.error(f"Lead capture write failed: {e}")
+            st.session_state.access_granted = True
+            st.rerun()
+        else:
+            st.error("Please enter a valid email address.")
         st.stop()  # Nothing below renders until access is granted
 # ── END EMAIL GATE ───────────────────────────────────
 

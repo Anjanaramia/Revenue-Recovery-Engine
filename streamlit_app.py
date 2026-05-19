@@ -44,28 +44,33 @@ if not st.session_state.access_granted:
         "No credit card. No commitment. Takes 5 minutes.</p>",
         unsafe_allow_html=True
     )
+    
     if st.button("Get Free Access"):
-        if is_valid_email(email):
-            import csv, os
-            from datetime import datetime
-            log_file = "leads_captured.csv"
-            file_exists = os.path.isfile(log_file)
-            try:
-                with open(log_file, "a", newline="") as f:
-                    writer = csv.DictWriter(f, fieldnames=["timestamp","name","email"])
-                    if not file_exists:
-                        writer.writeheader()
-                    writer.writerow({
-                        "timestamp": datetime.now().isoformat(),
-                        "name": name,
-                        "email": email
-                    })
-            except Exception as e:
-                logging.error(f"Lead capture write failed: {e}")
-            st.session_state.access_granted = True
-            st.rerun()
-        else:
-            st.error("Please enter a valid email address.")
+    if is_valid_email(email):
+        import sqlite3, os
+        from datetime import datetime
+        try:
+            conn = sqlite3.connect("leads.db")
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS leads (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp TEXT,
+                    name TEXT,
+                    email TEXT UNIQUE
+                )
+            """)
+            conn.execute(
+                "INSERT OR IGNORE INTO leads (timestamp, name, email) VALUES (?, ?, ?)",
+                (datetime.now().isoformat(), name, email)
+            )
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            logging.error(f"Lead capture write failed: {e}")
+        st.session_state.access_granted = True
+        st.rerun()
+    else:
+        st.error("Please enter a valid email address.")
 
     st.stop()  # Nothing below renders until access is granted
 # ── END EMAIL GATE ───────────────────────────────────

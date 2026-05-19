@@ -47,9 +47,9 @@ if not st.session_state.access_granted:
     
     if st.button("Get Free Access"):
         if is_valid_email(email):
-        import sqlite3, os
-        from datetime import datetime
-        try:
+            import sqlite3, os
+            from datetime import datetime
+            try:
             conn = sqlite3.connect("leads.db")
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS leads (
@@ -58,7 +58,7 @@ if not st.session_state.access_granted:
                     name TEXT,
                     email TEXT UNIQUE
                 )
-            """)
+                """)
             conn.execute(
                 "INSERT OR IGNORE INTO leads (timestamp, name, email) VALUES (?, ?, ?)",
                 (datetime.now().isoformat(), name, email)

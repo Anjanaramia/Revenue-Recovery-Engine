@@ -46,7 +46,7 @@ if not st.session_state.access_granted:
     )
     
     if st.button("Get Free Access"):
-    if is_valid_email(email):
+        if is_valid_email(email):
         import sqlite3, os
         from datetime import datetime
         try:

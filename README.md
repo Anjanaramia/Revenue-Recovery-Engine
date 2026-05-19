@@ -302,4 +302,4 @@ Google PM Cert · Digital Marketing Bootcamp · Salesforce SFMC Email Specialist
 
 Building at the intersection of real estate, revenue operations, and AI-augmented development.
 
-[LinkedIn](https://linkedin.com) · [Streamlit App](https://revenue-recovery-engine.streamlit.app) · [API Docs](https://revenue-recovery-engine-tjut.onrender.com/docs)
+[LinkedIn](www.linkedin.com/in/jayaprakashanjana) · [Streamlit App](https://revenue-recovery-engine.streamlit.app) · [API Docs](https://revenue-recovery-engine-tjut.onrender.com/docs)

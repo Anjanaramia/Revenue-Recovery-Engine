@@ -71,7 +71,7 @@ if not st.session_state.access_granted:
             st.rerun()
         else:
             st.error("Please enter a valid email address.")
-            st.stop()  # Nothing below renders until access is granted
+     st.stop()  # Nothing below renders until access is granted
 # ── END EMAIL GATE ───────────────────────────────────
 
 import pandas as pd

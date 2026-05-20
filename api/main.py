@@ -18,7 +18,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
 # ── App setup ─────────────────────────────────────────────────────────────────
-
+limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(
     title="Revenue Recovery Engine API",
     description=(
@@ -34,6 +34,8 @@ app = FastAPI(
 )
 
 # Allow all origins so Salesforce External Services can call this freely
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -300,7 +302,8 @@ def health():
     summary="Score a single lead",
     tags=["Scoring"],
 )
-def score_lead(lead: LeadInput):
+@limiter.limit("30/minute")
+def score_lead(request: Request, lead: LeadInput):
     """
     Score a single real estate lead by reactivation priority.
 

@@ -16,25 +16,12 @@ import math
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
-from fastapi.openapi.utils import get_openapi
+
 
 # ── App setup ─────────────────────────────────────────────────────────────────
 limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(
-    def custom_openapi():
-    if app.openapi_schema:
-        return app.openapi_schema
-    openapi_schema = get_openapi(
-        title=app.title,
-        version=app.version,
-        description=app.description,
-        routes=app.routes,
-    )
-    openapi_schema["openapi"] = "3.0.3"
-    app.openapi_schema = openapi_schema
-    return app.openapi_schema
-
-app.openapi = custom_openapi
+  
     title="Revenue Recovery Engine API",
     description=(
         "Lead scoring and reactivation priority API for real estate agents. "
@@ -63,18 +50,18 @@ app.add_middleware(
 # ── Pydantic models ───────────────────────────────────────────────────────────
 
 class LeadInput(BaseModel):
-    lead_source: Optional[str] = Field(
+    lead_source: str = Field(
         default="",
         example="Zillow",
         description="Where the lead originated. E.g. Zillow, Referral, Instagram, Open House.",
     )
     days_idle: int = Field(
-        ...,
+        default=0,
         ge=0,
         example=245,
         description="Number of days since last contact with this lead.",
     )
-    lead_type: Optional[str] = Field(
+    lead_type: str = Field(
         default="",
         example="Buyer",
         description="Type of lead. E.g. Buyer, Seller, Past Client, Referral, Investor.",

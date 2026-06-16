@@ -49,14 +49,28 @@ app.add_middleware(
 
 # ── Pydantic models ───────────────────────────────────────────────────────────
 
+# ── Pydantic models ───────────────────────────────────────────────────────────
+
 class LeadInput(BaseModel):
-    # 1. This intercepts the Lead ID that Salesforce sends inside 'lead_source'
-    # and renames it to 'lead_id' automatically inside your Python engine.
+    # 1. Cleanly maps the incoming Salesforce Record ID to a dedicated parameter
     lead_id: str = Field(
         default="",
-        alias="lead_source",
         example="00Qg5000004vUyLEAU",
-        description="The Salesforce Record ID sent via the lead_source parameter."
+        description="The Salesforce Record ID passed explicitly by the Flow."
+    )
+    
+    # 2. RESTORED TO TRUE TEXT STRING: This will now match your keyword multipliers!
+    lead_source: str = Field(
+        default="",
+        example="Zillow",
+        description="Where the lead originated. E.g. Zillow, Referral, Instagram, Open House.",
+    )
+    
+    # 3. RESTORED TO TRUE TEXT STRING: No longer hardcoded or missing
+    lead_type: str = Field(
+        default="",
+        example="Buyer",
+        description="Type of lead. E.g. Buyer, Seller, Past Client, Referral, Investor.",
     )
     
     days_idle: int = Field(
@@ -64,12 +78,6 @@ class LeadInput(BaseModel):
         ge=0,
         example=245,
         description="Number of days since last contact with this lead.",
-    )
-    
-    lead_type: str = Field(
-        default="",
-        example="Buyer",
-        description="Type of lead. E.g. Buyer, Seller, Past Client, Referral, Investor.",
     )
     
     has_email: bool = Field(
@@ -86,7 +94,6 @@ class LeadInput(BaseModel):
 
     class Config:
         populate_by_name = True
-
 
 class LeadScore(BaseModel):
     score: int = Field(

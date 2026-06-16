@@ -50,18 +50,15 @@ app.add_middleware(
 # ── Pydantic models ───────────────────────────────────────────────────────────
 
 class LeadInput(BaseModel):
-    # 1. FIXED ALIAS: This tells Pydantic to look for 'lead_source' coming from Salesforce 
-    # but cleanly saves it as 'lead_id' inside your internal Python calculations!
+    # 1. This intercepts the Lead ID that Salesforce sends inside 'lead_source'
+    # and renames it to 'lead_id' automatically inside your Python engine.
     lead_id: str = Field(
         default="",
         alias="lead_source",
         example="00Qg5000004vUyLEAU",
-        description="The Salesforce 15 or 18 character Record ID passed via the lead_source parameter."
+        description="The Salesforce Record ID sent via the lead_source parameter."
     )
     
-    # 2. Re-added lead_source text wrapper if needed later (Optional placeholder)
-    # Note: Since Salesforce maps the ID to lead_source right now, your backend 
-    # will treat the incoming string as the Lead ID field.
     days_idle: int = Field(
         default=0,
         ge=0,
@@ -87,8 +84,6 @@ class LeadInput(BaseModel):
         description="True if a valid phone number is on file for this lead.",
     )
 
-    # This configuration is crucial: It tells Pydantic to accept EITHER 
-    # the internal field name ('lead_id') OR the alias string name ('lead_source').
     class Config:
         populate_by_name = True
 
@@ -117,7 +112,6 @@ class LeadScore(BaseModel):
 class HealthResponse(BaseModel):
     status: str
     engine: str
-
 # ── Scoring constants ─────────────────────────────────────────────────────────
 
 LEAD_TYPE_WEIGHTS = {

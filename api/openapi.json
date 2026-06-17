@@ -1,1 +1,134 @@
-{"openapi":"3.1.0","info":{"title":"Revenue Recovery Engine API","description":"Lead scoring and reactivation priority API for real estate agents. Scores dormant CRM leads 1–10 by closing probability using recency, lead type, contact completeness, and lead source signals.","contact":{"name":"Anjana — Bay Area RevOps","url":"https://github.com/Anjanaramia/Revenue-Recovery-Engine"},"version":"2.0.0"},"paths":{"/health":{"get":{"tags":["System"],"summary":"Health check","description":"Liveness check. Returns 200 OK when the API is running.\nUsed by Salesforce Named Credentials to verify the endpoint is reachable.","operationId":"health_health_get","responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HealthResponse"}}}}}}},"/score-lead":{"post":{"tags":["Scoring"],"summary":"Score a single lead","description":"Score a single real estate lead by reactivation priority.\n\nReturns a priority score (1–10), temperature classification,\nrecommended next action, and lead source tier label.\n\nDesigned to be called by Salesforce External Services / Agentforce Actions\nvia Named Credentials — no authentication required for pilot deployment.\n\n**Scoring signals (in order of weight):**\n- Recency (50%) — days since last contact\n- Lead type (25%) — Past Client and Referral score highest\n- Contact completeness (25%) — email + phone both present\n- Lead source multiplier — closing probability by acquisition channel","operationId":"score_lead_score_lead_post","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/LeadInput"}}},"required":true},"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{"$ref":"#/components/schemas/LeadScore"}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}}},"components":{"schemas":{"HTTPValidationError":{"properties":{"detail":{"items":{"$ref":"#/components/schemas/ValidationError"},"type":"array","title":"Detail"}},"type":"object","title":"HTTPValidationError"},"HealthResponse":{"properties":{"status":{"type":"string","title":"Status"},"engine":{"type":"string","title":"Engine"}},"type":"object","required":["status","engine"],"title":"HealthResponse"},"LeadInput":{"properties":{"lead_source":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Lead Source","description":"Where the lead originated. E.g. Zillow, Referral, Instagram, Open House.","default":"","example":"Zillow"},"days_idle":{"type":"integer","minimum":0.0,"title":"Days Idle","description":"Number of days since last contact with this lead.","example":245},"lead_type":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Lead Type","description":"Type of lead. E.g. Buyer, Seller, Past Client, Referral, Investor.","default":"","example":"Buyer"},"has_email":{"type":"boolean","title":"Has Email","description":"True if a valid email address is on file for this lead.","example":true},"has_phone":{"type":"boolean","title":"Has Phone","description":"True if a valid phone number is on file for this lead.","example":true}},"type":"object","required":["days_idle","has_email","has_phone"],"title":"LeadInput"},"LeadScore":{"properties":{"score":{"type":"integer","maximum":10.0,"minimum":1.0,"title":"Score","description":"Priority score 1–10. Higher = more urgent to reactivate."},"temperature":{"type":"string","title":"Temperature","description":"Recency classification: Hot / Warm / Cold / Dormant."},"next_action":{"type":"string","title":"Next Action","description":"Recommended next action for this lead."},"source_tier":{"type":"string","title":"Source Tier","description":"Lead source tier label based on closing probability."}},"type":"object","required":["score","temperature","next_action","source_tier"],"title":"LeadScore"},"ValidationError":{"properties":{"loc":{"items":{"anyOf":[{"type":"string"},{"type":"integer"}]},"type":"array","title":"Location"},"msg":{"type":"string","title":"Message"},"type":{"type":"string","title":"Error Type"},"input":{"title":"Input"},"ctx":{"type":"object","title":"Context"}},"type":"object","required":["loc","msg","type"],"title":"ValidationError"}}}}
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Revenue Recovery Engine API",
+    "description": "Lead scoring and reactivation priority API for real estate agents. Scores dormant CRM leads 1–10 by closing probability using recency, lead type, contact completeness, and lead source signals.",
+    "contact": {
+      "name": "Anjana — Bay Area RevOps",
+      "url": "https://github.com/Anjanaramia/Revenue-Recovery-Engine"
+    },
+    "version": "2.0.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": ["System"],
+        "summary": "Health check",
+        "description": "Liveness check. Returns 200 OK when the API is running.\nUsed by Salesforce Named Credentials to verify the endpoint is reachable.",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/score-lead": {
+      "post": {
+        "tags": ["Scoring"],
+        "summary": "Score a single lead",
+        "description": "Score a single real estate lead by reactivation priority.\n\nReturns a priority score (1–10), temperature classification,\nrecommended next action, and lead source tier label.\n\nDesigned to be called by Salesforce External Services / Agentforce Actions\nvia Named Credentials — no authentication required for pilot deployment.\n\n**Scoring signals (in order of weight):**\n- Recency (50%) — days since last contact\n- Lead type (25%) — Past Client and Referral score highest\n- Contact completeness (25%) — email + phone both present\n- Lead source multiplier — closing probability by acquisition channel",
+        "operationId": "score_lead_score_lead_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeadInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadScore"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "engine": {
+            "type": "string",
+            "title": "Engine"
+          }
+        },
+        "type": "object",
+        "required": ["status", "engine"],
+        "title": "HealthResponse"
+          },
+      "LeadInput": {
+        "properties": {
+          "lead_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lead Id",
+            "description": "The unique 18-character Salesforce Lead Record ID passed explicitly by the Flow.",
+            "default": "",
+            "example": "00Qg5000004vUyLEAU"
+          },
+          "lead_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lead Source",
+            "description": "Where the lead originated. E.g. Zillow, Referral, Instagram, Open House.",
+            "default": "Unknown",
+            "example": "Zillow"
+          },
+          "days_idle": {

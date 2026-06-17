@@ -52,34 +52,50 @@ app.add_middleware(
 # ── Pydantic models ───────────────────────────────────────────────────────────
 
 class LeadInput(BaseModel):
-    # Dedicated slot for the 18-character Salesforce identifier
-    lead_id: str = Field(
+    # 1. Technical Routing Layer (Added to fix the Salesforce Flow mapping error)
+    lead_id: Optional[str] = Field(
         default="",
         example="00Qg5000004vUyLEAU",
-        description="The unique Salesforce Lead Record ID."
+        description="The unique 18-character Salesforce Lead Record ID passed explicitly by the Flow."
     )
     
-    # Restored to capture text strings matching your dictionary multipliers
+    # 2. Predictive Signal: Restored to text string to match LEAD_SOURCE_MULTIPLIERS keys
     lead_source: Optional[str] = Field(
         default="Unknown",
-        example="Referral",
-        description="The source string matching your weight multipliers."
+        example="Zillow",
+        description="Where the lead originated (e.g., Zillow, Referral, Web, Phone Inquiry)."
     )
     
-    # Restored to prevent falling back to the default 'unknown' 0.30 tier weight
+    # 3. Predictive Signal: Restored to text string to match lead type segment weights
     lead_type: Optional[str] = Field(
-        default="Buyer",
+        default="unknown",
         example="Buyer",
-        description="Lead type segment. E.g. Buyer, Seller."
+        description="Type of lead tier classification (e.g., Buyer, Seller, Past Client)."
     )
     
-    days_idle: int = Field(default=0, ge=0)
-    has_email: bool = Field(default=False)
-    has_phone: bool = Field(default=False)
+    # 4. Behavioral & Completeness Signals (Strict validation retained)
+    days_idle: int = Field(
+        default=0,
+        ge=0,
+        example=245,
+        description="Number of days since last contact with this lead. Must be greater than or equal to 0."
+    )
+    
+    has_email: bool = Field(
+        ...,
+        example=True,
+        description="True if a valid email address/checkbox flag is passed from the CRM record."
+    )
+    
+    has_phone: bool = Field(
+        ...,
+        example=True,
+        description="True if a valid phone number/checkbox flag is passed from the CRM record."
+    )
 
     class Config:
+        # Allows fields to be populated using either the Python variable name or an explicit alias
         populate_by_name = True
-
 class LeadScore(BaseModel):
     score: int = Field(
         ...,

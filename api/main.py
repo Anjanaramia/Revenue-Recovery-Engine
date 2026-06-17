@@ -52,45 +52,30 @@ app.add_middleware(
 # ── Pydantic models ───────────────────────────────────────────────────────────
 
 class LeadInput(BaseModel):
-    # 1. Cleanly maps the incoming Salesforce Record ID to a dedicated parameter
+    # Dedicated slot for the 18-character Salesforce identifier
     lead_id: str = Field(
         default="",
         example="00Qg5000004vUyLEAU",
-        description="The Salesforce Record ID passed explicitly by the Flow."
+        description="The unique Salesforce Lead Record ID."
     )
     
-    # 2. RESTORED TO TRUE TEXT STRING: This will now match your keyword multipliers!
-    lead_source: str = Field(
-        default="",
-        example="Zillow",
-        description="Where the lead originated. E.g. Zillow, Referral, Instagram, Open House.",
+    # Restored to capture text strings matching your dictionary multipliers
+    lead_source: Optional[str] = Field(
+        default="Unknown",
+        example="Referral",
+        description="The source string matching your weight multipliers."
     )
     
-    # 3. RESTORED TO TRUE TEXT STRING: No longer hardcoded or missing
-    lead_type: str = Field(
-        default="",
+    # Restored to prevent falling back to the default 'unknown' 0.30 tier weight
+    lead_type: Optional[str] = Field(
+        default="Buyer",
         example="Buyer",
-        description="Type of lead. E.g. Buyer, Seller, Past Client, Referral, Investor.",
+        description="Lead type segment. E.g. Buyer, Seller."
     )
     
-    days_idle: int = Field(
-        default=0,
-        ge=0,
-        example=245,
-        description="Number of days since last contact with this lead.",
-    )
-    
-    has_email: bool = Field(
-        ...,
-        example=True,
-        description="True if a valid email address is on file for this lead.",
-    )
-    
-    has_phone: bool = Field(
-        ...,
-        example=True,
-        description="True if a valid phone number is on file for this lead.",
-    )
+    days_idle: int = Field(default=0, ge=0)
+    has_email: bool = Field(default=False)
+    has_phone: bool = Field(default=False)
 
     class Config:
         populate_by_name = True

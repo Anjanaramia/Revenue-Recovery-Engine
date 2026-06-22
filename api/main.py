@@ -8,7 +8,7 @@ Endpoints:
     POST /score-lead   — score a single lead and return priority + next action
 """
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Body
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import Optional
@@ -321,7 +321,7 @@ def health():
     tags=["Scoring"],
 )
 @limiter.limit("30/minute")
-def score_lead(request: Request, lead: LeadInput):
+def score_lead(request: Request, lead: LeadInput = Body(...)):
     """
     Score a single real estate lead by reactivation priority.
 

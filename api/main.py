@@ -300,18 +300,20 @@ def compute_score(lead: LeadInput) -> LeadScore:
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
-@app.get(
-    "/health",
-    response_model=HealthResponse,
+@app.route(
+    "/health", 
+    methods=["GET", "HEAD"],
     summary="Health check",
-    tags=["System"],
+    tags=["System"]
 )
-def health():
+def health(request: Request):
     """
     Liveness check. Returns 200 OK when the API is running.
-    Used by Salesforce Named Credentials to verify the endpoint is reachable.
+    Handles both GET (browser checks) and HEAD (Salesforce Named Credentials liveness verification).
     """
-    return HealthResponse(status="ok", engine="Revenue Recovery Engine v2.0")
+    # Return a plain dictionary or a HealthResponse. 
+    # FastAPI automatically strips the body if it's a HEAD request!
+    return {"status": "ok", "engine": "Revenue Recovery Engine v2.0"}
 
 
 @app.post(

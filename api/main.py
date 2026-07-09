@@ -300,20 +300,30 @@ def compute_score(lead: LeadInput) -> LeadScore:
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
-@app.route(
+@app.get(
     "/health", 
-    methods=["GET", "HEAD"],
-    summary="Health check",
+    summary="Health check - Browser", 
     tags=["System"]
 )
-def health(request: Request):
+def health_get(request: Request):
     """
-    Liveness check. Returns 200 OK when the API is running.
-    Handles both GET (browser checks) and HEAD (Salesforce Named Credentials liveness verification).
+    Liveness check for standard GET requests.
     """
-    # Return a plain dictionary or a HealthResponse. 
-    # FastAPI automatically strips the body if it's a HEAD request!
     return {"status": "ok", "engine": "Revenue Recovery Engine v2.0"}
+
+
+@app.head(
+    "/health", 
+    summary="Health check - Salesforce Liveness", 
+    tags=["System"],
+    include_in_schema=False # Hides the HEAD endpoint from your OpenAPI docs cleanly
+)
+def health_head():
+    """
+    Handles Salesforce Named Credentials liveness verification.
+    Returns an empty body with a 200 OK status.
+    """
+    return None # FastAPI automatically converts None to an empty body with a 200 OK status
 
 
 @app.post(
@@ -326,17 +336,5 @@ def health(request: Request):
 def score_lead(request: Request, lead: LeadInput = Body(...)):
     """
     Score a single real estate lead by reactivation priority.
-
-    Returns a priority score (1–10), temperature classification,
-    recommended next action, and lead source tier label.
-
-    Designed to be called by Salesforce External Services / Agentforce Actions
-    via Named Credentials — no authentication required for pilot deployment.
-
-    **Scoring signals (in order of weight):**
-    - Recency (50%) — days since last contact
-    - Lead type (25%) — Past Client and Referral score highest
-    - Contact completeness (25%) — email + phone both present
-    - Lead source multiplier — closing probability by acquisition channel
     """
     return compute_score(lead)

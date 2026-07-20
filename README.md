@@ -115,7 +115,7 @@ Revenue-Recovery-Engine/
 │   └── flow_AutolaunchedAgentBridge.md # Agent-facing Autolaunched Flow reference
 │
 ├── sample_data/
-│   └── kalyani_sample_leads.csv
+│   └── sample_crm.csv
 │
 └── README.md
 ```

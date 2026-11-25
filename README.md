@@ -1,140 +1,153 @@
+<img width="1596" height="497" alt="Revenue Recovery Engine banner" src="https://github.com/user-attachments/assets/3cdc310e-a1ae-4927-ad55-de4b6407467c" />
 
-<img width="1596" height="497" alt="image" src="https://github.com/user-attachments/assets/3cdc310e-a1ae-4927-ad55-de4b6407467c" />
+# Revenue Recovery Engine
 
-# 🚀 Revenue Recovery Engine
+> **Help small real estate teams get value from leads they've already paid for, without buying new ads.**
 
-> **Turn your dormant leads into closed deals — without buying a single new ad.**
+Solo agents and small brokerages pay for leads through portals, ads, and open houses, then lose many of them when follow-up slips. This tool scores those dormant leads by how likely they are to respond, suggests the next action, and uses the **OpenAI API** to draft a personalised email, voicemail script, and text message for each one. The agent reviews and sends every message. Nothing goes out automatically.
 
-The average real estate agent has **$30,000+ in dormant leads** sitting in their CRM — leads they already paid for and stopped following up on. This engine finds them, scores them by closing probability, writes the reactivation message, and — inside Salesforce — does all of it automatically, including an autonomous Agentforce agent that can identify dormant leads and draft outreach on request.
+It runs in two places:
+- **A web app for solo agents**: upload a CRM export (CSV) and get a prioritised list with drafted outreach.
+- **Inside Salesforce**: a Flow scores each Lead automatically, and an Agentforce agent answers questions about dormant leads and drafts emails on request.
 
 ---
 
-## 🔴 Live Demo
+## Live demo
 
 | Resource | Link |
 |---|---|
-| **Streamlit App** | [revenue-recovery-engine.streamlit.app](https://revenue-recovery-engine.streamlit.app) |
-| **REST API (Swagger UI)** | [revenue-recovery-engine-tjut.onrender.com/docs](https://revenue-recovery-engine-tjut.onrender.com/docs) |
-| **Kaggle EDA Notebook** | Public notebook — 9,240 leads analysed |
+| **Web app** (free; asks for an email to start) | [revenue-recovery-engine.streamlit.app](https://revenue-recovery-engine.streamlit.app) |
+| **REST API docs** (Swagger UI) | [revenue-recovery-engine-tjut.onrender.com/docs](https://revenue-recovery-engine-tjut.onrender.com/docs) |
+| **Sample data** | [`sample_crm.csv`](./sample_crm.csv): 20 fictional leads to try the app with |
+
+> The API runs on Render's free tier, so the first request after a quiet period can take up to a minute while the server wakes up.
 
 ---
 
-## ✅ What It Does
+## Current status
 
-**For solo agents (Streamlit app):** Upload your CRM export. In under 60 seconds get every lead scored 1–10, classified Hot/Warm/Cold/Dormant, with a ready-to-send email, voicemail script, and SMS — plus a Sunk Cost Recovery dashboard showing spend at risk and recovery ROI based on your real CPL.
-
-**For Salesforce orgs (automated):** The moment a Lead is created or updated, a Flow calls the same Python engine and writes back Recovery Score, Lead Temperature, Source Tier, and Next Action — zero Apex, zero manual steps.
-
-**For conversational use (Agentforce):** Ask the agent *"Bring up my list of dormant leads"* and it queries scored Salesforce data live. Ask it to *"draft a reactivation email for the first lead"* and it returns a grounded, personalised email using that lead's real name, company, score, and source — generated inside the chat window.
+| | |
+|---|---|
+| ✅ **Working and public** | Web app, REST API, Salesforce Flow integration, Agentforce agent (tested in a Salesforce developer org) |
+| ✅ **Uses AI** | OpenAI API (`gpt-4o-mini`) drafts outreach; built-in templates are used if no API key is provided |
+| ⏳ **Not yet proven** | No real estate team has used it on a live CRM yet. Scoring weights haven't been tested against real closed deals |
 
 ---
 
-## 🧠 Scoring Logic
+## What it does
+
+**Web app (for solo agents):** Upload a CRM export. Each lead gets a score from 1 to 10, a label (Hot, Warm, Cold, or Dormant), and a suggested next action. Pick a lead to generate an email, voicemail script, and text message you can copy or download. A **Sunk Cost Recovery** view uses your average cost per lead to estimate how much past ad spend is sitting in dormant leads.
+
+**Salesforce (automatic scoring):** When a Lead is created or updated, a Flow sends it to the scoring API and writes back four fields: Recovery Score, Lead Temperature, Source Tier, and Next Action. No Apex code is needed.
+
+**Agentforce (conversational):** Ask *"Bring up my list of dormant leads"* and the agent pulls the already-scored Leads from Salesforce. Ask *"Draft a reactivation email for the first lead"* and it writes an email using that lead's real record data. Salesforce's own output check marked the test responses as **grounded**, meaning the agent used real record data instead of making it up. Details and the test transcript are in [Salesforce/AGENTFORCE.md](./Salesforce/AGENTFORCE.md).
+
+---
+
+## How scoring works
+
+The score uses three signals, then adjusts for where the lead came from.
 
 | Signal | Weight | What it measures |
 |---|---|---|
-| **Recency** | 50% | Days since last contact — Hot ≤30 / Warm ≤90 / Cold ≤180 / Dormant 180+ |
-| **Lead Type** | 25% | Past Client (1.0) → Referral (0.95) → Investor (0.85) → Buyer/Seller (0.80) |
-| **Contact Completeness** | 25% | Email + Phone both present (1.0) / Either (0.6) / Neither (0.2) |
-| **Lead Source Multiplier** | Applied last | Closing probability by acquisition channel |
+| **Recency** | 50% | Days since last contact. Hot: 30 days or less. Warm: 90 or less. Cold: 180 or less. Dormant: over 180 |
+| **Lead type** | 25% | Past Client (1.0), Referral (0.95), Investor (0.85), Buyer/Seller (0.80) |
+| **Contact details** | 25% | Both email and phone (1.0), one of them (0.6), neither (0.2) |
+| **Lead source** | Applied last | A multiplier for how the lead was acquired (table below) |
 
-### Lead Source Tiers
-
-| Tier | Sources | Multiplier |
+| Source tier | Examples | Multiplier |
 |---|---|---|
-| 🥇 High Probability | Referral, Past Client, Open House, Sign Call | 1.25–1.35 |
-| 🥈 Portal / Active Searcher | Zillow, Redfin, Realtor.com, Trulia | 1.15–1.20 |
-| 🥉 Paid / Organic Social | Instagram, Facebook, Google, Organic | 0.95–1.05 |
-| ⬇️ Outbound / Low Signal | Cold Call, Direct Mail, Door Knock | 0.80–0.85 |
+| High intent | Referral, Past Client, Open House, Sign Call | 1.25–1.35 |
+| Portal / active searcher | Zillow, Redfin, Realtor.com, Trulia | 1.15–1.20 |
+| Paid or organic social | Instagram, Facebook, Google, Organic | 0.95–1.05 |
+| Outbound / low signal | Cold Call, Direct Mail, Door Knock | 0.80–0.85 |
 
-> Validated against a 9,240-lead Kaggle dataset — referral leads convert at roughly 2x the rate of paid social leads, which directly informed the tier weights above.
+**Where the weights come from:** The source ordering was informed by exploratory analysis of a public 9,240-lead dataset on Kaggle, where referral leads converted at roughly twice the rate of paid social leads, together with common real estate practice. The exact weights are starting assumptions. They haven't been tested against real estate closed-deal outcomes yet, which is the next step on the roadmap.
 
-### Sunk Cost Recovery Dashboard
-Enter your average CPL to unlock: **Spend at Risk** (dormant leads × CPL), **Recoverable Spend** (projected reactivations × CPL), and **Recovery ROI** (revenue ÷ spend at risk). CPL is deliberately kept separate from the priority score — CPL measures financial exposure, the score measures closing probability. Conflating them would distort both.
+**Cost per lead (CPL) is kept separate from the score on purpose.** The score estimates how likely a lead is to respond. CPL measures how much money is tied up in it. Mixing the two would make both less useful.
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│                  STREAMLIT APP (Frontend)                 │
-│  Upload & Clean → Score & Prioritize → Outreach Generator │
-│  Client Dashboard → Monthly Report → Admin Panel          │
-└────────────────────┬────────────────────────────────────-┘
-                      │
-┌────────────────────▼────────────────────────────────────-┐
-│              PYTHON SCORING ENGINE                        │
-│  data_cleaner.py → reactivation_engine.py                 │
-│  outreach_generator.py → client_manager.py → reporting.py │
-└────────────────────┬────────────────────────────────────-┘
-                      │
-┌────────────────────▼────────────────────────────────────-┐
-│              FASTAPI REST LAYER  /api                     │
+│                  WEB APP (Streamlit)                      │
+│  Upload & Clean → Score & Prioritise → Outreach Drafts    │
+│  Client Dashboard → Monthly Report (CSV/PDF)              │
+└────────────────────┬─────────────────────────────────────┘
+                     │
+┌────────────────────▼─────────────────────────────────────┐
+│              PYTHON ENGINE                                │
+│  data_cleaner.py → scorer.py → outreach_generator.py      │
+│  (OpenAI API)    → client_manager.py → reporting.py       │
+└────────────────────┬─────────────────────────────────────┘
+                     │
+┌────────────────────▼─────────────────────────────────────┐
+│              REST API (FastAPI, hosted on Render)         │
 │  POST /score-lead  ·  GET /health                         │
-│  OpenAPI 3.0.3 spec · Rate limited · CORS · Render-hosted  │
-└────────────────────┬────────────────────────────────────-┘
-                      │
-        ┌─────────────┴──────────────┐
-        ▼                            ▼
-┌──────────────────────┐   ┌─────────────────────────────────┐
-│  DETERMINISTIC PATH   │   │      GENERATIVE PATH             │
-│  Record-Triggered Flow│   │  Agentforce Lead Reactivation    │
-│  → Async Path          │   │  Agent (5 subagents)              │
-│  → HTTP Callout Action │   │  → Autolaunched Flow (on-demand)  │
-│  → Writes 4 fields to  │   │  → Calls same Python API          │
-│    every Lead record   │   │  → Einstein Prompt Template       │
-│  automatically          │   │  → Grounded email drafted live   │
-└──────────────────────┘   └─────────────────────────────────┘
+│  OpenAPI spec · Rate limited (30 requests/min) · CORS     │
+└────────────────────┬─────────────────────────────────────┘
+                     │
+       ┌─────────────┴──────────────┐
+       ▼                            ▼
+┌──────────────────────┐   ┌──────────────────────────────┐
+│  AUTOMATIC PATH       │   │  CONVERSATIONAL PATH          │
+│  Record-Triggered Flow│   │  Agentforce agent             │
+│  → HTTP Callout       │   │  → Autolaunched Flow          │
+│  → Writes 4 fields    │   │  → Reads scored Leads         │
+│    to each Lead       │   │  → Prompt Template drafts     │
+│                       │   │    the email                  │
+└──────────────────────┘   └──────────────────────────────┘
 ```
 
-Full Agentforce setup, permissions architecture, and resolution log: **[AGENTFORCE.md](./AGENTFORCE.md)**
+Agentforce setup, permissions, and how a week-long permissions blocker was fixed: [Salesforce/AGENTFORCE.md](./Salesforce/AGENTFORCE.md)
+API and Salesforce integration reference: [IntegrationArchitecture.txt](./IntegrationArchitecture.txt)
 
 ---
 
-## 📁 Repository Structure
+## Repository structure
 
 ```
 Revenue-Recovery-Engine/
-│
-├── streamlit_app.py          # Main UI — 5-tab Streamlit application
-├── reactivation_engine.py    # Lead scoring engine with source multipliers
-├── data_cleaner.py           # CSV cleaning, column standardisation, quality scoring
-├── outreach_generator.py     # Email, voicemail, and SMS template generation
-├── client_manager.py         # Multi-client SQLite database management
-├── reporting.py              # Monthly report builder (CSV + PDF export)
+├── streamlit_app.py           # Web app: 5 tabs
+├── scorer.py                  # Lead scoring with source multipliers
+├── data_cleaner.py            # CSV cleaning and column standardisation
+├── outreach_generator.py      # Email, voicemail, and SMS drafts (OpenAI API + template fallback)
+├── client_manager.py          # Multi-client records (SQLite)
+├── reporting.py               # Monthly report export (CSV and PDF)
+├── sample_crm.csv             # 20 fictional sample leads
+├── requirements.txt
+├── .env.example               # Where to put your own OpenAI API key
+├── IntegrationArchitecture.txt
 │
 ├── api/
-│   ├── main.py               # FastAPI REST endpoint — POST /score-lead
-│   ├── requirements.txt      # fastapi, uvicorn, pydantic, slowapi
-│   └── openapi.json          # OpenAPI 3.0.3 spec
+│   ├── main.py                # FastAPI: POST /score-lead, GET /health
+│   ├── requirementsapi.txt
+│   └── openapi.json
 │
-├── salesforce/
-│   ├── AGENTFORCE.md         # Full Agentforce architecture + permissions fix log
-│   ├── flow_LeadRecoveryUpdateNew.md   # Record-Triggered Flow reference
-│   └── flow_AutolaunchedAgentBridge.md # Agent-facing Autolaunched Flow reference
-│
-├── sample_data/
-│   └── sample_crm.csv
-│
-└── README.md
+└── Salesforce/
+    ├── AGENTFORCE.md                      # Agentforce build and permissions fix log
+    ├── flow_LeadRecoveryUpdateNew.md      # Record-Triggered Flow reference
+    └── flow_AutolaunchedAgentBridge.md    # Flow the agent calls on demand
 ```
 
 ---
 
-## 🚀 Quick Start
+## Quick start
 
-**Use the live app** — [revenue-recovery-engine.streamlit.app](https://revenue-recovery-engine.streamlit.app), no setup required.
+**Try it in the browser:** [revenue-recovery-engine.streamlit.app](https://revenue-recovery-engine.streamlit.app). No setup needed. Use `sample_crm.csv` if you don't have your own data.
 
-**Run locally:**
+**Run it locally:**
 ```bash
 git clone https://github.com/Anjanaramia/Revenue-Recovery-Engine.git
 cd Revenue-Recovery-Engine
 pip install -r requirements.txt
+cp .env.example .env    # optional: add your OpenAI API key for AI-written drafts
 streamlit run streamlit_app.py
 ```
 
-**Call the API directly:**
+**Call the API:**
 ```bash
 curl -X POST https://revenue-recovery-engine-tjut.onrender.com/score-lead \
   -H "Content-Type: application/json" \
@@ -146,63 +159,55 @@ curl -X POST https://revenue-recovery-engine-tjut.onrender.com/score-lead \
 
 ---
 
-## 🤖 Agentforce — Conversational Lead Reactivation
-
-Ask the agent, get grounded answers pulled live from scored Salesforce data:
+## Agentforce example
 
 > **You:** Bring up my list of dormant leads.
-> **Agent:** Here is your list of dormant leads: 1. Anjana Engine Test — Cloud Architecture LLC. 2. Aadith Validation Test Lead — IOC. 3. Lucy Ramia — ARC. Let me know if you'd like more details or assistance!
+> **Agent:** Returns the dormant Leads from Salesforce, each with its score and source.
 
 > **You:** Draft a reactivation email for the first lead on that list.
-> **Agent:** *(returns a full, personalised, grounded email — subject line, body, and soft CTA — using that lead's real name, company, and score)*
+> **Agent:** Returns an email with a subject line, body, and soft call to action, using that lead's name, company, score, and source.
 
-Every response is validated by an Output Evaluation step confirming **GROUNDED** — the agent used the actual function-call output, not a hallucinated placeholder. See [AGENTFORCE.md](./AGENTFORCE.md) for the full build, including the permissions wall that blocked this for a week and exactly how it was resolved.
+Subagents: Identify Dormant Leads · Draft Reactivation Emails · Prioritise High-Value Leads · Suggest Follow-Up Actions · Track Engagement Metrics
 
-**Subagents:** Identify Dormant Leads · Draft Reactivation Emails · Prioritize High Value Leads · Suggest Follow Up Actions · Track Engagement Metrics
-
----
-
-## 🗺️ Roadmap
-
-- [x] Streamlit app — full 5-tab workflow
-- [x] Lead source multiplier — real estate source tiers
-- [x] CPL / Sunk Cost Recovery dashboard
-- [x] FastAPI REST endpoint + rate limiting + OpenAPI spec
-- [x] SQLite lead capture (concurrent-safe)
-- [x] Salesforce Record-Triggered Flow — 4 fields written automatically
-- [x] Named Credentials + External Credentials + Remote Site Settings
-- [x] Agentforce Lead Reactivation Agent — 5 subagents, live and grounded
-- [x] Custom permission set for EinsteinServiceAgent User (Lead object access)
-- [ ] Outcome logging UI — feedback loop for self-improving scoring
-- [ ] Scikit-learn retraining on real closed-deal outcomes
-- [ ] Agentforce autonomous send (currently human-reviewed by design)
-- [ ] AppExchange Bolt packaging for Real Estate vertical
+The agent drafts. A person reviews and sends. Full test transcript: [Salesforce/AGENTFORCE.md](./Salesforce/AGENTFORCE.md).
 
 ---
 
-## 🛠️ Tech Stack
+## Roadmap
+
+- [x] Web app with the full 5-tab workflow
+- [x] Lead source multipliers for real estate
+- [x] Sunk Cost Recovery view
+- [x] REST API with rate limiting and an OpenAPI spec
+- [x] Salesforce Record-Triggered Flow writing 4 fields automatically
+- [x] Named Credentials and HTTP Callout setup
+- [x] Agentforce agent with 5 subagents, tested in a developer org
+- [ ] **First pilot with a real estate team on a live CRM**
+- [ ] Log real outcomes (replied, met, closed) to test and tune the scoring
+- [ ] Retrain the scoring on real closed-deal data
+
+---
+
+## Tech stack
 
 | Layer | Technology |
 |---|---|
-| Frontend | Streamlit |
-| Scoring Engine | Python (pandas, numpy) |
-| REST API | FastAPI + uvicorn + Pydantic v2 |
-| API Hosting | Render (free tier) |
-| App Hosting | Streamlit Community Cloud |
-| Database | SQLite |
-| Rate Limiting | slowapi |
-| CRM Automation | Salesforce Flow Builder (Record-Triggered + Autolaunched) |
-| CRM Integration | Named Credentials · External Credentials · HTTP Callout Action |
-| Conversational AI | Agentforce Studio · Einstein Prompt Builder |
-| Monitoring | Uptime Robot |
-| AI dev tools | Claude (Python/architecture) · Gemini (Salesforce/Agentforce) · Antigravity (prototyping) |
+| Outreach drafting | **OpenAI API** (`gpt-4o-mini`), template fallback without a key |
+| Web app | Streamlit (Streamlit Community Cloud) |
+| Scoring engine | Python (pandas, numpy) |
+| REST API | FastAPI, uvicorn, Pydantic v2, slowapi (Render free tier) |
+| Storage | SQLite |
+| PDF reports | ReportLab |
+| CRM automation | Salesforce Flow (Record-Triggered and Autolaunched) |
+| CRM integration | Named Credentials, External Credentials, HTTP Callout Action |
+| Conversational AI | Agentforce, Prompt Builder |
+| AI coding assistants used to build it | Claude, Gemini, Antigravity |
 
 ---
 
-## 📜 License
-MIT License — see [LICENSE](LICENSE).
+## License
+MIT. See [LICENSE](LICENSE).
 
-## 👤 Author
-**Anjana Ramia** — Bay Area RevOps · Google PM Cert · Digital Marketing Bootcamp  · Salesforce PD1 · MBA
-
-[Streamlit App](https://revenue-recovery-engine.streamlit.app) · [API Docs](https://revenue-recovery-engine-tjut.onrender.com/docs)
+## Author
+**Anjana Ramia**: Salesforce Admin & BA · Salesforce Platform Developer I · MBA in Finance
+[LinkedIn](https://www.linkedin.com/in/anjanaramia) · [Web app](https://revenue-recovery-engine.streamlit.app) · [API docs](https://revenue-recovery-engine-tjut.onrender.com/docs)

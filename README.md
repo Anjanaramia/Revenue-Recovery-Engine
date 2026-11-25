@@ -203,6 +203,6 @@ Every response is validated by an Output Evaluation step confirming **GROUNDED**
 MIT License — see [LICENSE](LICENSE).
 
 ## 👤 Author
-**Anjana** — Bay Area RevOps · Google PM Cert · Digital Marketing Bootcamp  · Salesforce PD1 · MBA
+**Anjana Ramia** — Bay Area RevOps · Google PM Cert · Digital Marketing Bootcamp  · Salesforce PD1 · MBA
 
 [Streamlit App](https://revenue-recovery-engine.streamlit.app) · [API Docs](https://revenue-recovery-engine-tjut.onrender.com/docs)
